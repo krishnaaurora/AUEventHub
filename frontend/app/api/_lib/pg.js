@@ -3,7 +3,14 @@ import { newDb } from 'pg-mem'
 import { DEMO_SQL_SEED } from './mock-store'
 
 const require = createRequire(import.meta.url)
-const { Pool } = require('pg')
+let RealPgPool = null
+
+try {
+  const pg = require('pg')
+  RealPgPool = pg.Pool
+} catch {
+  RealPgPool = null
+}
 
 let poolInstance
 let memoryDb
@@ -15,7 +22,10 @@ function isMemoryDatabase() {
 function getPool() {
   if (!poolInstance) {
     if (process.env.DATABASE_URL) {
-      poolInstance = new Pool({
+      if (!RealPgPool) {
+        throw new Error('DATABASE_URL is set but the "pg" package is not available in this runtime.')
+      }
+      poolInstance = new RealPgPool({
         connectionString: process.env.DATABASE_URL,
         ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : undefined,
       })
