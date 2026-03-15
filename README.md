@@ -1,29 +1,69 @@
-# University Events UI (React + Tailwind)
+# AI-EVENTMANG
 
-Scaffolded small React + Vite app with Tailwind CSS. Pages included:
+This repository is deployed as two separate Vercel projects:
 
-- Landing / Home with Hero (uses /public/assets/hero-bg.jpg), Features, Categories, CTA
-- All Events
-- Event Details
-- About (glass morph cards)
-- Contact (glass morph cards)
+- Frontend (Next.js): `frontend`
+- Backend (Vercel Serverless Functions): `frontend/backend`
 
-Setup
+## Live URLs
 
-1. Place the provided hero image in `public/assets/` and name it `hero-bg.jpg`.
-2. Install dependencies:
+- Frontend: https://frontend-one-jet-62.vercel.app
+- Backend: https://backend-gold-one-92.vercel.app
+- Backend health endpoint: https://backend-gold-one-92.vercel.app/api/health
+
+## Project Structure
+
+AI-EVENTMANG/
+- frontend/
+	- app/
+	- components/
+	- public/
+	- package.json
+	- backend/
+		- api/
+		- package.json
+		- vercel.json
+- README.md
+
+## Run Locally
+
+### Frontend
+
+1. Go to frontend folder.
+2. Install dependencies.
+3. Run dev server.
 
 ```bash
+cd frontend
 npm install
-```
-
-3. Start dev server:
-
-```bash
 npm run dev
 ```
 
-Notes
+Optional environment variable for frontend:
 
-- The project uses a glass morph style for navbar and the About/Contact pages.
-- Gradient backgrounds are used only for Hero and CTA per UI rules.
+```bash
+NEXT_PUBLIC_BACKEND_URL=https://backend-gold-one-92.vercel.app
+```
+
+### Backend
+
+```bash
+cd frontend/backend
+npx vercel dev
+```
+
+## Deploy
+
+### Frontend deploy
+
+```bash
+cd frontend
+npx vercel --prod --yes
+```
+
+### Backend deploy
+
+```bash
+cd frontend/backend
+npx vercel --prod --yes
+```
