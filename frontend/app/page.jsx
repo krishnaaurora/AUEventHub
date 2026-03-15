@@ -1,5 +1,8 @@
-import Home from '../src/views/Home'
-
 export default function HomePage() {
-  return <Home />
+  return (
+    <main style={{ padding: '2rem', fontFamily: 'sans-serif' }}>
+      <h1>AI-EVENTMANG Frontend</h1>
+      <p>Project structure is configured as requested.</p>
+    </main>
+  )
 }

@@ -1,20 +1,14 @@
-import Providers from './providers'
-import '../src/index.css'
-import 'lenis/dist/lenis.css'
+import './globals.css'
 
 export const metadata = {
-  title: 'AU Event Hub',
-  description: 'University events landing and authentication portal'
+  title: 'AI-EVENTMANG Frontend',
+  description: 'Minimal Next.js frontend structure'
 }
-
-export const dynamic = 'force-dynamic'
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
-        <Providers>{children}</Providers>
-      </body>
+      <body>{children}</body>
     </html>
   )
 }
