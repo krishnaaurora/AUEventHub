@@ -127,18 +127,19 @@ export async function POST(request) {
       await client.query('BEGIN')
       const ticketId = buildTicketId(studentId, eventId)
       const qrPayload = buildQrPayload(ticketId, studentId, eventId)
+      const now = new Date().toISOString()
       const registrationResult = await client.query(
-        `INSERT INTO registrations (student_id, event_id, ticket_id, qr_code, status)
-         VALUES ($1, $2, $3, $4, 'confirmed')
+        `INSERT INTO registrations (student_id, event_id, ticket_id, qr_code, registration_date, registered_at, status)
+         VALUES ($1, $2, $3, $4, $5, $5, $6)
          RETURNING id, student_id, event_id, ticket_id, qr_code, registered_at, registration_date, status`,
-        [studentId, eventId, ticketId, qrPayload],
+        [studentId, eventId, ticketId, qrPayload, now, 'confirmed'],
       )
 
       const notificationResult = await client.query(
-        `INSERT INTO notifications (user_id, message, priority)
-         VALUES ($1, $2, $3)
+        `INSERT INTO notifications (user_id, type, title, message, priority, is_read, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, user_id, message, priority, created_at`,
-        [studentId, `Registration confirmed for ${event.title}. Ticket ${ticketId} is ready.`, 'medium'],
+        [studentId, 'info', 'Registration Confirmed', `Registration confirmed for ${event.title}. Ticket ${ticketId} is ready.`, 'medium', false, now],
       )
 
       await client.query('COMMIT')

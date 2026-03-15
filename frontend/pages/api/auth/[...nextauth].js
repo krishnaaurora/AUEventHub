@@ -1,6 +1,6 @@
 import _NextAuth from 'next-auth'
 import _CredentialsProvider from 'next-auth/providers/credentials'
-import clientPromise from '../../../lib/mongodb'
+import { ensureAuthCollections, getUsersCollection } from '../../../app/api/_lib/db'
 
 // ESM/CJS interop: unwrap .default if needed (happens when "type":"module" is set)
 const NextAuth = _NextAuth.default ?? _NextAuth
@@ -17,10 +17,9 @@ export const authOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-        const client = await clientPromise
-        const db = client.db(process.env.MONGODB_DB || 'AUeventhub_db')
-
-        const user = await db.collection('users').findOne({ email: credentials.email })
+        await ensureAuthCollections()
+        const usersCollection = await getUsersCollection()
+        const user = await usersCollection.findOne({ email: credentials.email })
 
         if (!user || credentials.password !== user.password) return null
         if (String(user.accountStatus || 'active').toLowerCase() === 'suspended') return null
@@ -40,7 +39,7 @@ export const authOptions = {
     })
   ],
   session: { strategy: 'jwt' },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET || 'dev_nextauth_secret',
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

@@ -1,4 +1,5 @@
 import clientPromise from '../../../lib/mongodb.js'
+import { getMockMongoDatabase, MOCK_DB_MODE } from './mock-store'
 
 let dbInstance
 
@@ -18,8 +19,12 @@ export const COLLECTIONS = {
 
 async function getDb() {
   if (!dbInstance) {
-    const client = await clientPromise
-    dbInstance = client.db(process.env.MONGODB_DB || 'ai_eventmang')
+    if (!clientPromise) {
+      dbInstance = getMockMongoDatabase()
+    } else {
+      const client = await clientPromise
+      dbInstance = client.db(process.env.MONGODB_DB || 'ai_eventmang')
+    }
   }
   return dbInstance
 }
@@ -99,6 +104,13 @@ export async function ensureStudentEventCollections() {
   await eventReports.createIndex({ event_id: 1 }, { unique: true })
   await eventReports.createIndex({ generated_at: -1 })
   await eventReports.createIndex({ top_department: 1, generated_at: -1 })
+
+  if (MOCK_DB_MODE) {
+    const eventsCount = await events.countDocuments({})
+    if (eventsCount === 0) {
+      await events.insertMany([])
+    }
+  }
 }
 
 export async function ensureOrganizerEventCollections() {
