@@ -109,9 +109,11 @@ export default function ApprovedEventsPage() {
                     ? 'Pending Registrar Approval'
                     : event.status === 'pending_vc'
                       ? 'Pending VC Approval'
-                      : event.status === 'approved'
-                        ? 'Fully Approved'
-                        : event.status?.replace(/_/g, ' ')
+                      : event.status === 'published'
+                        ? 'Published & Live'
+                        : event.status === 'approved'
+                          ? 'Fully Approved'
+                          : event.status?.replace(/_/g, ' ')
                   return (
                     <motion.tr
                       key={event._id}

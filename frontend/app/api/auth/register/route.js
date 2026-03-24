@@ -15,7 +15,6 @@ export async function POST(request) {
     const department = String(body.department || '').trim()
     const year = String(body.year || '').trim()
     const avatar = String(body.avatar || '').trim()
-    const allowedDomain = 'aurora.edu.in'
 
     if (!fullName || !email || !password || !role) {
       return NextResponse.json({ message: 'All fields are required.' }, { status: 400 })
@@ -23,13 +22,6 @@ export async function POST(request) {
 
     if (!VALID_ROLES.has(role)) {
       return NextResponse.json({ message: 'Invalid role selection.' }, { status: 400 })
-    }
-
-    if (!email.endsWith(`@${allowedDomain}`)) {
-      return NextResponse.json(
-        { message: `Email must be a ${allowedDomain} address.` },
-        { status: 400 },
-      )
     }
 
     if (password.length < 6) {

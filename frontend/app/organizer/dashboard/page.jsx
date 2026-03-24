@@ -119,7 +119,7 @@ export default function OrganizerDashboard() {
       const pending = myEvents.filter((e) =>
         ['pending_dean', 'pending_registrar', 'pending_vc', 'pending'].includes(e.status)
       ).length
-      const approved = myEvents.filter((e) => e.status === 'approved').length
+      const approved = myEvents.filter((e) => ['approved', 'published'].includes(e.status)).length
       const rejected = myEvents.filter((e) => e.status === 'rejected').length
 
       const regRes = await fetch('/api/student/registrations', { cache: 'no-store' })
@@ -278,7 +278,7 @@ export default function OrganizerDashboard() {
                 </div>
                 <span
                   className={`ml-3 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${
-                    event.status === 'approved'
+                    ['approved', 'published', 'completed'].includes(event.status)
                       ? 'bg-emerald-100 text-emerald-700'
                       : event.status === 'rejected'
                         ? 'bg-rose-100 text-rose-700'

@@ -43,6 +43,9 @@ export async function GET(request) {
           vc_status: 'pending'
         }
         break
+      case 'dean-approved':
+        matchConditions = { dean_status: 'approved' }
+        break
       case 'approved':
         matchConditions = { vc_status: 'approved' }
         break

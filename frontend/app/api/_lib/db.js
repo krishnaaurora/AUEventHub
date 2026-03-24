@@ -49,6 +49,8 @@ export async function ensureStudentEventCollections() {
   }
 
   const events = db.collection(COLLECTIONS.events)
+  await events.createIndex({ status: 1 })
+  await events.createIndex({ category: 1 })
   await events.createIndex({ status: 1, start_date: 1 })
   await events.createIndex({ category: 1, start_date: 1 })
   await events.createIndex({ status: 1, date: 1 })
@@ -122,6 +124,11 @@ export async function ensureAuthCollections() {
   const usersCollection = db.collection(COLLECTIONS.users)
   await usersCollection.createIndex({ email: 1 }, { unique: true })
   await usersCollection.createIndex({ registrationId: 1 })
+  await usersCollection.createIndex({ role: 1 })
+  // Add indexes for registrations
+  const registrations = db.collection('registrations');
+  await registrations.createIndex({ student_id: 1 });
+  await registrations.createIndex({ event_id: 1 });
 
   const dummyEmail = 'student@aurora.edu.in'
   const adminEmail = 'admin@aurora.edu.in'
@@ -150,6 +157,7 @@ export async function ensureAuthCollections() {
         year: existing.year || "3rd Year",
         avatar: existing.avatar || "/assets/avatars/person1.png",
         accountStatus: existing.accountStatus || 'active',
+        role: existing.role || 'student',
         updatedAt: new Date()
       }
     });
@@ -178,7 +186,7 @@ export async function ensureAuthCollections() {
         $set: {
           fullName: existingAdmin.fullName || 'Aurora Admin',
           password: existingAdmin.password || 'admin123',
-          role: 'admin',
+          role: existingAdmin.role || 'admin',
           registrationId: existingAdmin.registrationId || 'ADMIN-0001',
           department: existingAdmin.department || 'Administration',
           avatar: existingAdmin.avatar || '/assets/avatars/person1.png',

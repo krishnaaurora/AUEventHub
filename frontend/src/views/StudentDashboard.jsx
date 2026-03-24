@@ -13,6 +13,31 @@ const iconMap = { calendar: CalendarDays, bookmark: BookMarked, check: CheckCirc
 const fade = { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35 } }
 
 export default function StudentDashboard() {
+    // TODO: Replace with actual student ID from auth context/session
+    const studentId = typeof window !== 'undefined' ? (localStorage.getItem('student_id') || 'student@aurora.edu.in') : 'student@aurora.edu.in';
+
+    // Registration handler
+    async function handleRegister(event) {
+      if (!studentId) {
+        alert('Student ID not found. Please log in.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/student/registrations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ student_id: studentId, event_id: event._id }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          alert('Registration successful!');
+        } else {
+          alert(data.message || 'Registration failed.');
+        }
+      } catch (err) {
+        alert('Registration failed.');
+      }
+    }
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('All')
@@ -159,7 +184,10 @@ export default function StudentDashboard() {
                     <button onClick={() => openDetail(event)} className="flex-1 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-cyan-400">
                       View Details
                     </button>
-                    <button className="flex-1 rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">
+                    <button
+                      className="flex-1 rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                      onClick={() => handleRegister(event)}
+                    >
                       Register
                     </button>
                   </div>
@@ -178,7 +206,7 @@ export default function StudentDashboard() {
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600 flex items-center gap-1"><Radio className="h-3.5 w-3.5" /> Live</p>
               <h2 className="mt-2 text-2xl font-semibold">Happening Now</h2>
             </div>
-            <Link href="/student/events" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-emerald-300">View All</Link>
+            <Link href="/student/events" prefetch className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-emerald-300">View All</Link>
           </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           {ongoingEvents.length === 0 ? (
@@ -212,7 +240,7 @@ export default function StudentDashboard() {
               <h3 className="text-lg font-semibold">Notifications</h3>
               <p className="text-sm text-slate-500">AI prioritized updates</p>
             </div>
-            <Link href="/student/notifications" className="text-xs font-semibold text-indigo-600 hover:underline">View All</Link>
+            <Link href="/student/notifications" prefetch className="text-xs font-semibold text-indigo-600 hover:underline">View All</Link>
           </div>
           <div className="mt-4 space-y-3">
             {notifications.slice(0, 3).map((note) => (
@@ -263,7 +291,7 @@ export default function StudentDashboard() {
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Upcoming</p>
             <h2 className="mt-2 text-2xl font-semibold">Upcoming Events</h2>
           </div>
-          <Link href="/student/events" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-indigo-300">View Calendar</Link>
+          <Link href="/student/events" prefetch className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-indigo-300">View Calendar</Link>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredUpcoming.length === 0 ? (
@@ -283,7 +311,12 @@ export default function StudentDashboard() {
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button onClick={() => openDetail(event)} className="flex-1 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-indigo-400">View Details</button>
-                  <button className="flex-1 rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Register</button>
+                  <button
+                    className="flex-1 rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    onClick={() => handleRegister(event)}
+                  >
+                    Register
+                  </button>
                 </div>
               </motion.div>
             ))
@@ -327,7 +360,7 @@ export default function StudentDashboard() {
               <h2 className="text-2xl font-semibold">My Registered Events</h2>
               <p className="text-sm text-slate-500">Track your registrations</p>
             </div>
-            <Link href="/student/registered" className="text-xs font-semibold text-indigo-600 hover:underline">View All</Link>
+            <Link href="/student/registered" prefetch className="text-xs font-semibold text-indigo-600 hover:underline">View All</Link>
           </div>
           <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
             <table className="w-full text-left text-sm">
@@ -483,7 +516,12 @@ export default function StudentDashboard() {
                 )}
 
                 <div className="flex gap-3 pt-2">
-                  <button className="flex-1 rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors">Register Now</button>
+                  <button
+                    className="flex-1 rounded-full bg-indigo-600 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                    onClick={() => handleRegister(selectedEvent)}
+                  >
+                    Register Now
+                  </button>
                   <button onClick={() => setDetailOpen(false)} className="rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50">Close</button>
                 </div>
               </div>

@@ -92,8 +92,20 @@ export async function POST(request) {
     const pool = getPool()
     const body = await request.json()
 
+
     const studentId = String(body.student_id || '').trim()
-    const eventId = String(body.event_id || '').trim()
+    let eventId = String(body.event_id || '').trim()
+
+    // Convert eventId to ObjectId if possible
+    let eventObjectId = eventId
+    try {
+      const { ObjectId } = (await import('mongodb'))
+      if (ObjectId.isValid(eventId)) {
+        eventObjectId = new ObjectId(eventId)
+      }
+    } catch (e) {
+      // fallback: use as string
+    }
 
     if (!studentId || !eventId) {
       return NextResponse.json(
@@ -103,7 +115,7 @@ export async function POST(request) {
     }
 
     const eventsCollection = await getEventsCollection()
-    const event = await eventsCollection.findOne({ _id: eventId })
+    const event = await eventsCollection.findOne({ _id: eventObjectId })
     if (!event) {
       return NextResponse.json({ message: 'Event not found.' }, { status: 404 })
     }
