@@ -19,14 +19,8 @@ export async function GET() {
         n.message,
         n.event_id,
         n.created_at,
-        n.read_at,
-        CASE WHEN n.read_at IS NOT NULL THEN true ELSE false END as read,
-        e.title as event_title,
-        e.organizer_name,
-        e.venue,
-        e.start_date
+        n.is_read
       FROM notifications n
-      LEFT JOIN events e ON n.event_id = e.id
       WHERE n.user_id = $1 OR n.type IN ('system', 'approval_reminder')
       ORDER BY n.created_at DESC
       LIMIT 50
@@ -39,13 +33,7 @@ export async function GET() {
       message: row.message,
       event_id: row.event_id,
       created_at: row.created_at,
-      read: row.read,
-      eventDetails: row.event_title ? {
-        title: row.event_title,
-        organizer: row.organizer_name,
-        venue: row.venue,
-        date: row.start_date
-      } : null
+      read: !!row.is_read,
     }))
 
     return NextResponse.json({ notifications })
@@ -72,8 +60,8 @@ export async function PATCH(request) {
     // Mark notification as read
     await pool.query(`
       UPDATE notifications
-      SET read_at = NOW()
-      WHERE id = $1 AND user_id = $2
+      SET is_read = TRUE
+      WHERE id = $1 AND (user_id = $2 OR type IN ('system', 'approval_reminder'))
     `, [notificationId, auth.session.user.id])
 
     return NextResponse.json({ message: 'Notification marked as read' })

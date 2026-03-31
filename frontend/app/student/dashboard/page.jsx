@@ -13,7 +13,12 @@ import {
   MapPin,
   Clock,
   Radio,
+  ShieldCheck,
+  Key,
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react'
+
 import getSocket from '../../../lib/socket'
 
 function formatDate(dateValue, timeValue, event) {
@@ -69,16 +74,26 @@ export default function StudentDashboardPage() {
   async function loadDashboardData(activeStudentId) {
     if (!activeStudentId) {
       setLoading(false)
-      setEvents([])
-      setRecommendationIds([])
-      setTrending([])
-      setRegistrations([])
-      setCertificates([])
-      setNotifications([])
       return
     }
 
-    setLoading(true)
+    // ─── Instant Cache Recovery ──────────────────────────────────────────────
+    // Load from localStorage immediately so the UI is never empty.
+    try {
+      const cached = localStorage.getItem(`dashboard_cache_${activeStudentId}`)
+      if (cached) {
+        const data = JSON.parse(cached)
+        setEvents(data.events || [])
+        setRecommendationIds(data.recommendationIds || [])
+        setTrending(data.trending || [])
+        setRegistrations(data.registrations || [])
+        setCertificates(data.certificates || [])
+        setNotifications(data.notifications || [])
+        setLoading(false) // Data is ready from cache
+      }
+    } catch (e) { /* ignore */ }
+
+    setLoading(true) // Background refresh
     setError('')
 
     try {
@@ -93,10 +108,6 @@ export default function StudentDashboardPage() {
         fetch(`/api/student/notifications?user_id=${encodeURIComponent(activeStudentId)}`, { cache: 'no-store' }),
       ])
 
-      if (!eventsRes.ok || !recommendationRes.ok || !trendingRes.ok || !registrationsRes.ok || !certificatesRes.ok || !notificationsRes.ok) {
-        throw new Error('Unable to load dashboard data from server.')
-      }
-
       const eventsJson = await eventsRes.json()
       const recommendationJson = await recommendationRes.json()
       const trendingJson = await trendingRes.json()
@@ -104,18 +115,26 @@ export default function StudentDashboardPage() {
       const certificatesJson = await certificatesRes.json()
       const notificationsJson = await notificationsRes.json()
 
-      setEvents(Array.isArray(eventsJson.items) ? eventsJson.items : [])
-      setRecommendationIds(
-        Array.isArray(recommendationJson.recommended_events)
-          ? recommendationJson.recommended_events
-          : [],
-      )
-      setTrending(Array.isArray(trendingJson.items) ? trendingJson.items : [])
-      setRegistrations(Array.isArray(registrationsJson.items) ? registrationsJson.items : [])
-      setCertificates(Array.isArray(certificatesJson.items) ? certificatesJson.items : [])
-      setNotifications(Array.isArray(notificationsJson.items) ? notificationsJson.items : [])
+      const nextData = {
+        events: Array.isArray(eventsJson.items) ? eventsJson.items : [],
+        recommendationIds: Array.isArray(recommendationJson.recommended_events) ? recommendationJson.recommended_events : [],
+        trending: Array.isArray(trendingJson.items) ? trendingJson.items : [],
+        registrations: Array.isArray(registrationsJson.items) ? registrationsJson.items : [],
+        certificates: Array.isArray(certificatesJson.items) ? certificatesJson.items : [],
+        notifications: Array.isArray(notificationsJson.items) ? notificationsJson.items : [],
+      }
+
+      setEvents(nextData.events)
+      setRecommendationIds(nextData.recommendationIds)
+      setTrending(nextData.trending)
+      setRegistrations(nextData.registrations)
+      setCertificates(nextData.certificates)
+      setNotifications(nextData.notifications)
+
+      // ─── Update Cache ──────────────────────────────────────────────────────
+      localStorage.setItem(`dashboard_cache_${activeStudentId}`, JSON.stringify(nextData))
     } catch (err) {
-      setError(err?.message || 'Failed to load dashboard data.')
+      setError('Unable to refresh dashboard. Showing cached data.')
     } finally {
       setLoading(false)
     }
@@ -304,11 +323,47 @@ export default function StudentDashboardPage() {
         </section>
       )}
 
+      {/* Live Check-in Section */}
+      <section className="grid gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2 rounded-3xl border border-slate-900 bg-slate-900 p-8 shadow-2xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700" />
+          <div className="relative z-10 space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center backdrop-blur-md border border-white/10">
+                <Radio className="h-5 w-5 text-indigo-400 animate-pulse" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Live Event Check-in</h2>
+                <p className="text-sm text-slate-400">Enter the 4-digit code shown by the organizer</p>
+              </div>
+            </div>
+
+            <CheckInForm registrations={registrations} studentId={studentId} onCheckedIn={() => loadDashboardData(studentId)} />
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col justify-center items-center text-center space-y-4">
+           <div className="h-16 w-16 rounded-full bg-emerald-50 flex items-center justify-center">
+              <ShieldCheck className="h-8 w-8 text-emerald-500" />
+           </div>
+           <div>
+              <h3 className="font-bold text-slate-900">Attendance Policy</h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-[200px] mx-auto">
+                Marking attendance is mandatory for certificate eligibility. Code rotates every 60 seconds.
+              </p>
+           </div>
+           <Link href="/student/certificates" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-widest">
+              View My Certificates →
+           </Link>
+        </div>
+      </section>
+
       {loading ? (
         <section className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
           Loading dashboard data...
         </section>
       ) : (
+
         <div className="grid gap-6 xl:grid-cols-2">
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
@@ -421,3 +476,113 @@ export default function StudentDashboardPage() {
     </div>
   )
 }
+
+// ─── Attendance Check-in Form ─────────────────────────────────────────────
+function CheckInForm({ registrations, studentId, onCheckedIn }) {
+  const [selectedEventId, setSelectedEventId] = useState('')
+  const [code, setCode] = useState('')
+  const [status, setStatus] = useState('idle') // idle, loading, success, error
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (registrations.length > 0 && !selectedEventId) {
+      setSelectedEventId(String(registrations[0].event_id || ''))
+    }
+  }, [registrations])
+
+  async function handleCheckIn() {
+    if (!selectedEventId || code.length !== 4) return
+    setStatus('loading')
+    try {
+      const res = await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId, eventId: selectedEventId, code }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setStatus('success')
+        setMessage(data.message)
+        if (onCheckedIn) onCheckedIn()
+      } else {
+        setStatus('error')
+        setMessage(data.message || 'Verification failed')
+      }
+    } catch {
+      setStatus('error')
+      setMessage('Network error while checking in')
+    }
+  }
+
+  if (status === 'success') {
+    return (
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-6 flex flex-col items-center text-center">
+        <div className="h-12 w-12 rounded-full bg-emerald-500 flex items-center justify-center mb-3">
+          <CheckCircle2 className="h-6 w-6 text-white" />
+        </div>
+        <h3 className="text-white font-bold">Checked In Successfully!</h3>
+        <p className="text-emerald-400 text-xs mt-1">{message}</p>
+        <button onClick={() => setStatus('idle')} className="mt-4 text-[10px] font-bold text-white/40 hover:text-white transition-colors uppercase tracking-[0.2em]">Check in for another event</button>
+      </motion.div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1 space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Selected Event</p>
+            <select 
+                value={selectedEventId}
+                onChange={(e) => setSelectedEventId(e.target.value)}
+                className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all cursor-pointer"
+            >
+                {registrations.length === 0 ? (
+                    <option value="" disabled className="bg-slate-900">No events registered</option>
+                ) : (
+                    registrations.map(reg => (
+                        <option key={reg.id || reg.event_id} value={String(reg.event_id)} className="bg-slate-900 text-white">
+                            {reg.event_title || 'Untitled Event'}
+                        </option>
+                    ))
+                )}
+            </select>
+        </div>
+
+        <div className="sm:w-32 space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Enter Code</p>
+            <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-500" />
+                <input 
+                    type="text"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="____"
+                    className="w-full pl-8 pr-2 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-center font-black tracking-[0.4em] text-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none placeholder:text-slate-700 font-mono"
+                />
+            </div>
+        </div>
+      </div>
+
+      {status === 'error' && (
+          <div className="flex items-center gap-2 text-rose-400 text-[10px] font-bold bg-rose-500/5 px-3 py-2 rounded-lg border border-rose-500/10">
+              <AlertCircle className="h-3 w-3" /> {message}
+          </div>
+      )}
+
+      <button 
+        onClick={handleCheckIn}
+        disabled={status === 'loading' || code.length !== 4 || !selectedEventId}
+        className="w-full rounded-xl bg-indigo-600 px-6 py-4 text-sm font-black text-white hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl shadow-indigo-900/40 flex items-center justify-center gap-2"
+      >
+        {status === 'loading' ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+        {status === 'loading' ? 'Verifying...' : 'Validate & Mark Attendance'}
+      </button>
+
+      <p className="text-[10px] text-slate-600 text-center font-bold italic">
+         *The code is available at the event venue. Only present students can check in.
+      </p>
+    </div>
+  )
+}
+

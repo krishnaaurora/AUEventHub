@@ -45,11 +45,10 @@ export async function GET() {
 
       // Total registrations across all published events
       pool.query(`
-        SELECT COALESCE(SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END), 0) as total_registrations
-        FROM event_registrations er
-        JOIN events e ON er.event_id = e.id
-        WHERE e.status = 'approved'
-      `).then(result => result.rows[0]?.total_registrations || 0)
+        SELECT COUNT(*)::int as count 
+        FROM registrations 
+        WHERE status = 'confirmed'
+      `).then(result => result.rows[0]?.count || 0)
     ])
 
     return NextResponse.json({

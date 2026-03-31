@@ -45,7 +45,7 @@ export const TextHoverEffect = ({
             className="select-none overflow-visible"
         >
             <defs>
-                <linearGradient
+                <radialGradient
                     id="textGradient"
                     gradientUnits="userSpaceOnUse"
                     cx="50%"
@@ -67,20 +67,18 @@ export const TextHoverEffect = ({
                         />
                     )}
                     <stop offset="100%" stopColor="transparent" />
-                </linearGradient>
+                </radialGradient>
 
-                <motion.radialGradient
+                <radialGradient
                     id="revealMask"
                     gradientUnits="userSpaceOnUse"
                     r="20%"
-                    cx={maskPosition.cx}
-                    cy={maskPosition.cy}
-                    animate={maskPosition}
-                    transition={{ duration: hovered ? 0 : duration ?? 0.2 }}
+                    cx={maskPosition.cx || "50%"}
+                    cy={maskPosition.cy || "50%"}
                 >
                     <stop offset="0%" stopColor="white" />
                     <stop offset="100%" stopColor="black" />
-                </motion.radialGradient>
+                </radialGradient>
                 <mask id="textMask">
                     <rect
                         x="0"

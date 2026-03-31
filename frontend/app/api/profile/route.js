@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getUsersCollection } from '../../_lib/db'
+import { getUsersCollection } from '../_lib/db'
 import { ObjectId } from 'mongodb'
 
 // GET /api/profile?user_id=... or from session

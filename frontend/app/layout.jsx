@@ -1,4 +1,5 @@
 import Providers from './providers'
+import SplitDashboardDecorator from './components/layout/SplitDashboardDecorator'
 import '../src/index.css'
 import 'lenis/dist/lenis.css'
 
@@ -11,7 +12,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <SplitDashboardDecorator>
+            {children}
+          </SplitDashboardDecorator>
+        </Providers>
       </body>
     </html>
   )

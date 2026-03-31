@@ -25,8 +25,10 @@ import {
   Mic,
   ChevronsLeft,
   ChevronsRight,
+  Award,
 } from 'lucide-react'
 import getSocket from '../../lib/socket'
+import SidebarTooltip from '../components/ui/SidebarTooltip'
 
 function getInitials(name) {
   return String(name || 'Organizer')
@@ -43,6 +45,7 @@ const navItems = [
   { icon: CalendarRange, label: 'My Events', href: '/organizer/my-events' },
   { icon: Users, label: 'Registrations', href: '/organizer/registrations' },
   { icon: QrCode, label: 'QR Scanner', href: '/organizer/attendance' },
+  { icon: Award, label: 'Certificates', href: '/organizer/certificates' },
   { icon: BarChart3, label: 'Analytics', href: '/organizer/analytics' },
   { icon: Wrench, label: 'AI Tools', href: '/organizer/ai-tools' },
   { icon: Mic, label: 'Speakers & Schedule', href: '/organizer/speakers' },
@@ -103,6 +106,18 @@ export default function OrganizerLayout({ children }) {
 
   function handleLogout() { router.push('/login') }
 
+  // Detect chat panel collapse
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
+  useEffect(() => {
+    const check = () => setIsChatPanelOpen(document.body.classList.contains('chat-panel-open'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const shouldShowTooltip = isCollapsed || isChatPanelOpen;
+
   return (
     <div className="min-h-screen bg-[#F0F4FA] text-slate-900">
       <AnimatePresence>
@@ -117,13 +132,13 @@ export default function OrganizerLayout({ children }) {
 
       <aside
         className={`
-          fixed inset-y-0 left-0 z-50
+          fixed inset-y-0 left-0 z-50 h-screen max-h-screen overscroll-none
           flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200/70 shadow-xl lg:shadow-none
           transition-all duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-        <div className="flex items-center justify-between px-4 py-5 border-b border-slate-100">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
@@ -155,44 +170,53 @@ export default function OrganizerLayout({ children }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav 
+          className="flex-1 h-full min-h-0 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden overscroll-none scroll-smooth hide-scrollbar"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           {navItems.map((item) => {
             const active = pathname === item.href || (item.href !== '/organizer/dashboard' && pathname?.startsWith(item.href))
             const Icon = item.icon
             return (
-              <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}>
-                <span
-                  className={`
-                    flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
-                    ${active
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}
-                  `}
-                  title={isCollapsed ? item.label : undefined}
-                >
-                  <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}`}>
-                    <Icon className="h-4 w-4" />
+              <SidebarTooltip key={item.href} label={item.label} isVisible={shouldShowTooltip}>
+                <Link href={item.href} onClick={() => setSidebarOpen(false)} className="w-full">
+                  <span
+                    className={`
+                      flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
+                      ${active
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}
+                    `}
+                    title={isCollapsed ? item.label : undefined}
+                    aria-label={item.label}
+                  >
+                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}`}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    {!isCollapsed && item.label}
+                    {!isCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
                   </span>
-                  {!isCollapsed && item.label}
-                  {!isCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
-                </span>
-              </Link>
+                </Link>
+              </SidebarTooltip>
             )
           })}
-        </nav>
-
-        <div className="px-3 pb-4 border-t border-slate-100 pt-3">
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 transition-colors`}
-            title={isCollapsed ? 'Logout' : undefined}
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50">
-              <LogOut className="h-4 w-4 text-rose-500" />
-            </span>
-            {!isCollapsed && 'Logout'}
-          </button>
-        </div>
+          
+          </nav>
+          
+          <div className="flex-shrink-0 p-3 border-t border-slate-100">
+            <SidebarTooltip label="Logout" isVisible={shouldShowTooltip}>
+              <button
+                onClick={handleLogout}
+                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 transition-colors`}
+                title={isCollapsed ? 'Logout' : undefined}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50">
+                  <LogOut className="h-4 w-4 text-rose-500" />
+                </span>
+                {!isCollapsed && 'Logout'}
+              </button>
+            </SidebarTooltip>
+          </div>
       </aside>
 
       <div className={`transition-all duration-300 ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col min-h-screen`}>
@@ -299,6 +323,15 @@ export default function OrganizerLayout({ children }) {
         }
         .animate-marquee:hover {
           animation-play-state: paused;
+        }
+
+        /* ── ZEN SCROLLING FOR SIDEBAR ── */
+        .hide-scrollbar {
+          -ms-overflow-style: none; /* IE and Edge */
+          scrollbar-width: none; /* Firefox */
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none; /* Chrome, Safari and Opera */
         }
       `}</style>
     </div>

@@ -27,6 +27,7 @@ export async function POST(request) {
     const comment = String(body.comment || '').trim()
 
     if (!eventId || !action) {
+      console.log('[REGISTRAR ACTION] 400: Missing eventId or action', { eventId, action })
       return NextResponse.json(
         { message: 'event_id and action are required.' },
         { status: 400 }
@@ -34,6 +35,7 @@ export async function POST(request) {
     }
 
     if (!['approve', 'reject'].includes(action)) {
+      console.log('[REGISTRAR ACTION] 400: Invalid action', { action })
       return NextResponse.json(
         { message: 'Action must be approve or reject.' },
         { status: 400 }
@@ -54,8 +56,9 @@ export async function POST(request) {
 
     const currentStatus = event.status
     if (currentStatus !== 'pending_registrar') {
+      console.log('[REGISTRAR ACTION] 400: Status mismatch', { eventId, currentStatus, expected: 'pending_registrar' })
       return NextResponse.json(
-        { message: 'Event is not pending registrar approval.' },
+        { message: `Event is not pending registrar approval. Current status: ${currentStatus || 'none'}` },
         { status: 400 }
       )
     }

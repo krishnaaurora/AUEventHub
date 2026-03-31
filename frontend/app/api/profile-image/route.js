@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getUsersCollection } from '../../_lib/db'
+import { getUsersCollection } from '../_lib/db'
 import { ObjectId } from 'mongodb'
 import { writeFile } from 'fs/promises'
 import path from 'path'
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // optional: increase if needed for large uploads
 
 export async function POST(request) {
   try {

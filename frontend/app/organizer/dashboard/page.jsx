@@ -73,16 +73,29 @@ export default function OrganizerDashboard() {
   const organizerName = session?.user?.name || session?.user?.email || ''
 
   async function loadDashboard() {
+    // ─── Instant Cache Recovery ──────────────────────────────────────────────
     try {
-      const eventsRes = await fetch('/api/student/events?limit=200', { cache: 'no-store' })
-      const eventsJson = await eventsRes.json()
-      const allEvents = Array.isArray(eventsJson.items) ? eventsJson.items : []
+      const cached = localStorage.getItem(`organizer_cache_${organizerId || organizerName}`)
+      if (cached) {
+        const data = JSON.parse(cached)
+        setStats(data.stats)
+        setUpcoming(data.upcoming)
+        setApprovalMap(data.approvalMap)
+        setViewsMap(data.viewsMap)
+        setLoading(false)
+      }
+    } catch (e) { /* ignore */ }
 
-      const myEvents = organizerId
-        ? allEvents.filter((e) => String(e.organizer_id || '') === String(organizerId))
-        : organizerName
-          ? allEvents.filter((e) => e.organizer === organizerName)
-          : allEvents
+    try {
+      const fetchUrl = organizerId 
+        ? `/api/student/events?organizer_id=${encodeURIComponent(organizerId)}&limit=50`
+        : organizerName 
+          ? `/api/student/events?organizer=${encodeURIComponent(organizerName)}&limit=50`
+          : `/api/student/events?limit=50`
+          
+      const eventsRes = await fetch(fetchUrl, { cache: 'no-store' })
+      const eventsJson = await eventsRes.json()
+      const myEvents = Array.isArray(eventsJson.items) ? eventsJson.items : []
 
       const myEventIds = myEvents.map((e) => String(e._id)).filter(Boolean)
 
@@ -126,13 +139,14 @@ export default function OrganizerDashboard() {
       const regJson = await regRes.json()
       const allRegs = Array.isArray(regJson.items) ? regJson.items : []
       const myEventIdSet = new Set(myEventIds)
-      const registrations = allRegs.filter((r) => myEventIdSet.has(String(r.event_id))).length
+      const registrationsCount = allRegs.filter((r) => myEventIdSet.has(String(r.event_id))).length
       const trendingScore = Object.values(nextViewsMap).reduce(
         (sum, item) => sum + Number(item.trending_score || 0),
         0,
       )
 
-      setStats({ total, pending, approved, rejected, registrations, trendingScore })
+      const nextStats = { total, pending, approved, rejected, registrations: registrationsCount, trendingScore }
+      setStats(nextStats)
 
       const now = new Date().toISOString().slice(0, 10)
       const upcomingEvents = myEvents
@@ -146,6 +160,15 @@ export default function OrganizerDashboard() {
         .slice(0, 5)
 
       setUpcoming(upcomingEvents)
+
+      // ─── Update Cache ──────────────────────────────────────────────────────
+      const cacheData = {
+        stats: nextStats,
+        upcoming: upcomingEvents,
+        approvalMap: nextApprovalMap,
+        viewsMap: nextViewsMap
+      }
+      localStorage.setItem(`organizer_cache_${organizerId || organizerName}`, JSON.stringify(cacheData))
     } catch {
       // silently fail
     } finally {

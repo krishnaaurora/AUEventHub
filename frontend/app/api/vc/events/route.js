@@ -8,6 +8,7 @@ import {
   getEventTrendingCollection,
 } from '../../_lib/db'
 import { requireVCAccess } from '../_lib/auth'
+import redis from '../../../../lib/redis'
 
 function toPositiveInt(value, fallback) {
   const num = Number.parseInt(value, 10)
@@ -23,6 +24,18 @@ export async function GET(request) {
     const filter = searchParams.get('filter') || 'all'
     const limit = toPositiveInt(searchParams.get('limit'), 50)
     const offset = toPositiveInt(searchParams.get('offset'), 0)
+
+    const cacheKey = `events:vc:${filter}:${limit}:${offset}`
+
+    if (redis && redis.isReady) {
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        console.log("⚡ Redis HIT")
+        return NextResponse.json(JSON.parse(cached))
+      }
+    }
+    console.log("❌ Redis MISS")
+    console.time("API")
 
     await ensureStudentEventCollections()
 
@@ -69,8 +82,32 @@ export async function GET(request) {
       {
         $lookup: {
           from: 'events',
-          localField: 'event_id',
-          foreignField: '_id',
+          let: { searchId: '$event_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    // Match as string _id
+                    { $eq: [{ $toString: '$_id' }, '$$searchId'] },
+                    // Match as ObjectId (when event_id is valid ObjectId string)
+                    {
+                      $eq: [
+                        '$_id',
+                        {
+                          $cond: [
+                            { $regexMatch: { input: '$$searchId', regex: /^[a-fA-F0-9]{24}$/ } },
+                            { $toObjectId: '$$searchId' },
+                            null
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          ],
           as: 'event'
         }
       },
@@ -103,7 +140,8 @@ export async function GET(request) {
         $project: {
           _id: '$event._id',
           title: '$event.title',
-          organizer_name: '$event.organizer_name',
+          organizer_name: { $ifNull: ['$event.organizer_name', '$event.organizer'] },
+          organizer: '$event.organizer',
           department: '$event.department',
           venue: '$event.venue',
           start_date: '$event.start_date',
@@ -112,7 +150,10 @@ export async function GET(request) {
           end_time: '$event.end_time',
           max_participants: '$event.max_participants',
           status: '$event.status',
+          poster: '$event.poster',
+          description: '$event.description',
           created_at: '$event.created_at',
+          organizer_id: '$event.organizer_id',
           approval: {
             dean_status: '$dean_status',
             registrar_status: '$registrar_status',
@@ -129,15 +170,24 @@ export async function GET(request) {
       { $limit: limit }
     ]).toArray()
 
+    console.timeEnd("API")
+
     // Get total count for pagination
     const totalCount = await approvalsCollection.countDocuments(matchConditions)
 
-    return NextResponse.json({
+    const payload = {
       items: events,
       total: totalCount,
       limit,
       offset,
-    })
+    }
+
+    // Store in Redis
+    if (redis && redis.isReady) {
+      await redis.setEx(cacheKey, 20, JSON.stringify(payload))
+    }
+
+    return NextResponse.json(payload)
   } catch (error) {
     console.error('VC events error:', error)
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 })

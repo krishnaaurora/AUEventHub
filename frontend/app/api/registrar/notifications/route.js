@@ -12,7 +12,7 @@ export async function GET() {
 
     // Get notifications for registrar (we'll use a generic approach since registrar notifications might be system-wide)
     const result = await pool.query(
-      'SELECT id, message, priority, created_at, read_at FROM notifications WHERE user_id = $1 OR user_id IS NULL ORDER BY created_at DESC LIMIT 50',
+      'SELECT id, message, priority, created_at, is_read FROM notifications WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
       ['registrar_system'] // Using a system user ID for registrar notifications
     )
 
@@ -21,7 +21,7 @@ export async function GET() {
       message: row.message,
       priority: row.priority,
       created_at: row.created_at,
-      read: !!row.read_at,
+      read: !!row.is_read,
     }))
 
     const unreadCount = notifications.filter(n => !n.read).length

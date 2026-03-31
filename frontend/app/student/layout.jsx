@@ -24,6 +24,7 @@ import {
   ChevronsRight,
 } from 'lucide-react'
 import getSocket from '../../lib/socket'
+import SidebarTooltip from '../components/ui/SidebarTooltip'
 
 function getInitials(name) {
   return String(name || 'Student')
@@ -158,6 +159,18 @@ export default function StudentLayout({ children }) {
     router.push('/login')
   }
 
+  // To detect if Chat Panel has forced collapse
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
+  useEffect(() => {
+    const check = () => setIsChatPanelOpen(document.body.classList.contains('chat-panel-open'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const shouldShowTooltip = isCollapsed || isChatPanelOpen;
+
   return (
     <div className="min-h-screen bg-[#F0F4FA] text-slate-900">
       {/* ── Mobile overlay ─────────────────────────────── */}
@@ -221,45 +234,47 @@ export default function StudentLayout({ children }) {
             const active = pathname?.startsWith(item.href)
             const Icon = item.icon
             return (
-              <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}>
-                <span
-                  className={`
-                    flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
-                    ${active
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}
-                  `}
-                  title={isCollapsed ? item.label : undefined}
-                >
+              <SidebarTooltip key={item.href} label={item.label} isVisible={shouldShowTooltip}>
+                <Link href={item.href} onClick={() => setSidebarOpen(false)} className="w-full">
                   <span
                     className={`
-                      flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors
-                      ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}
+                      flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
+                      ${active
+                        ? 'bg-indigo-50 text-indigo-700'
+                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}
                     `}
+                    title={isCollapsed ? item.label : undefined}
+                    aria-label={item.label}
                   >
-                    <Icon className="h-4 w-4" />
+                    <span
+                      className={`
+                        flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors
+                        ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}
+                      `}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    {!isCollapsed && item.label}
+                    {!isCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
                   </span>
-                  {!isCollapsed && item.label}
-                  {!isCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
-                </span>
-              </Link>
+                </Link>
+              </SidebarTooltip>
             )
           })}
+          {/* Logout */}
+          <SidebarTooltip label="Logout" isVisible={shouldShowTooltip}>
+            <button
+              onClick={handleLogout}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 transition-colors`}
+              title={isCollapsed ? 'Logout' : undefined}
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50">
+                <LogOut className="h-4 w-4 text-rose-500" />
+              </span>
+              {!isCollapsed && "Logout"}
+            </button>
+          </SidebarTooltip>
         </nav>
-
-        {/* Logout */}
-        <div className="px-3 pb-4 border-t border-slate-100 pt-3">
-          <button
-            onClick={handleLogout}
-            className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 transition-colors`}
-            title={isCollapsed ? 'Logout' : undefined}
-          >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50">
-              <LogOut className="h-4 w-4 text-rose-500" />
-            </span>
-            {!isCollapsed && "Logout"}
-          </button>
-        </div>
       </aside>
 
       {/* ── Right side: Navbar + Content ───────────────── */}

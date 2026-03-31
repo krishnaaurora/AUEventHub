@@ -36,6 +36,7 @@ export default function Features() {
     const [currentSuggestions, setCurrentSuggestions] = useState(() => getRandomSuggestions(2));
     const [hasInteracted, setHasInteracted] = useState(false);
     const scrollRef = useRef(null);
+    const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
     const isInView = useInView(chatContainerRef, { once: true, margin: "-100px" });
 
@@ -63,7 +64,10 @@ export default function Features() {
 
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            scrollRef.current.scrollTo({
+                top: scrollRef.current.scrollHeight,
+                behavior: "smooth",
+            });
         }
     }, [messages]);
 
@@ -206,7 +210,8 @@ export default function Features() {
                                 maskImage: "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)",
                                 WebkitMaskImage: "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)",
                             }}
-                            className="h-[400px] md:h-[500px] overflow-y-auto p-4 md:p-5 pb-8 space-y-4 custom-scrollbar scroll-smooth bg-transparent overscroll-contain"
+                            className="h-[400px] md:h-[500px] overflow-y-auto p-4 md:p-5 pb-8 space-y-4 custom-scrollbar bg-transparent overscroll-contain"
+                            data-lenis-prevent
                         >
                             <AnimatePresence initial={false}>
                                 {messages.map((msg) => (
@@ -249,6 +254,8 @@ export default function Features() {
                                 ))}
                             </AnimatePresence>
 
+                            <div ref={messagesEndRef} />
+
                             {/* Suggested Questions Area */}
                             {messages.length >= 2 && !messages[messages.length - 1]?.isTyping && (
                                 <motion.div
@@ -275,18 +282,13 @@ export default function Features() {
             </div>
 
             <style>{`
+                .custom-scrollbar {
+                    scrollbar-width: none; /* Firefox */
+                    -ms-overflow-style: none;  /* IE and Edge */
+                    scroll-behavior: smooth;
+                }
                 .custom-scrollbar::-webkit-scrollbar {
-                    width: 5px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background-color: rgba(0, 0, 0, 0.2);
-                    border-radius: 10px;
-                }
-                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background-color: rgba(0, 0, 0, 0.4);
+                    display: none; /* Chrome, Safari and Opera */
                 }
             `}</style>
         </section>

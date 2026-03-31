@@ -154,14 +154,25 @@ function VCEventDetailsPage() {
             animate={{ opacity: 1, y: 0 }}
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
           >
-            <div className="aspect-video bg-slate-100 rounded-lg mb-4 flex items-center justify-center">
-              <span className="text-slate-400">Event Poster</span>
+            <div className="aspect-video rounded-lg mb-4 overflow-hidden bg-slate-100">
+              {event.poster ? (
+                <img
+                  src={event.poster}
+                  alt={event.title}
+                  className="h-full w-full object-cover"
+                  onError={(e) => { e.target.onerror = null; e.target.src = '/assets/seminar.png' }}
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-slate-400 text-sm">
+                  No poster uploaded
+                </div>
+              )}
             </div>
             <h1 className="text-2xl font-bold text-slate-900 mb-2">{event.title}</h1>
             <div className="flex items-center gap-4 text-sm text-slate-600">
               <span className="flex items-center gap-1">
                 <User className="h-4 w-4" />
-                {event.organizer_name}
+                {event.organizer || 'Unknown Organizer'}
               </span>
               <span className="flex items-center gap-1">
                 <Building className="h-4 w-4" />

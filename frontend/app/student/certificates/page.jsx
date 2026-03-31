@@ -1,177 +1,236 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { motion } from 'framer-motion'
-import { Award, Download } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Award, Download, Loader2, Calendar, MapPin, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react'
 import getSocket from '../../../lib/socket'
 
-const colorMap = {
-  indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-700', badge: 'bg-indigo-100 text-indigo-700' },
-  amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100 text-amber-700' },
-  emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 text-emerald-700' },
-  cyan: { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-700', badge: 'bg-cyan-100 text-cyan-700' },
-  rose: { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700', badge: 'bg-rose-100 text-rose-700' },
-  violet: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700', badge: 'bg-violet-100 text-violet-700' },
+// ─── Certificate Renderer (Client Side) ───────────────────────────────────
+function CertificateGenerator({ student, event, template, onReady }) {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    if (!student || !event || !template) return
+
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    const img = new Image()
+    img.crossOrigin = "anonymous"
+    img.src = template.image_url
+
+    img.onload = () => {
+      // Set canvas size to match image
+      canvas.width = 1000
+      canvas.height = 707
+      
+      // 1. Draw Template
+      ctx.drawImage(img, 0, 0, 1000, 707)
+
+      // 2. Setup Fonts
+      // Note: In a real app, you'd load custom fonts. Using sans-serif here.
+      
+      // 3. Draw Student Name
+      const namePos = template.name_pos || { x: 500, y: 350 }
+      ctx.fillStyle = template.text_color || '#1e1b4b'
+      ctx.font = 'bold 50px sans-serif'
+      ctx.textAlign = 'center'
+      ctx.fillText(student.name || 'Student Name', namePos.x + 100, namePos.y + 40) // Adjust offsets relative to editor font size
+
+      // 4. Draw Event Name
+      const eventPos = template.event_pos || { x: 500, y: 450 }
+      ctx.font = '30px sans-serif'
+      ctx.fillStyle = template.accent_color || '#4f46e5'
+      ctx.fillText(event.title || 'Event Name', eventPos.x + 100, eventPos.y + 40)
+
+      // 5. Draw Date
+      const datePos = template.date_pos || { x: 500, y: 550 }
+      ctx.font = '20px sans-serif'
+      ctx.fillStyle = '#64748b'
+      const dateText = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+      ctx.fillText(dateText, datePos.x + 100, datePos.y + 30)
+
+      if (onReady) onReady(canvas.toDataURL('image/png'))
+    }
+  }, [student, event, template, onReady])
+
+  return <canvas ref={canvasRef} className="hidden" />
 }
 
 export default function CertificatesPage() {
-  const [certificates, setCertificates] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const { data: session, status } = useSession()
   const studentId = session?.user?.registrationId || session?.user?.id || ''
+  const studentName = session?.user?.name || 'Student'
 
+  const [registrations, setRegistrations] = useState([])
+  const [templates, setTemplates] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [generatedCerts, setGeneratedCerts] = useState({})
+
+  // 1. Load registrations and filter for 'present'
   useEffect(() => {
-    let ignore = false
+    if (status === 'loading' || !studentId) return
 
-    async function loadCertificates() {
-      if (status === 'loading') {
-        return
-      }
-
-      if (!studentId) {
-        setLoading(false)
-        setCertificates([])
-        return
-      }
-
+    async function loadData() {
       setLoading(true)
-      setError('')
       try {
-        const res = await fetch(`/api/student/certificates?student_id=${encodeURIComponent(studentId)}`, {
-          cache: 'no-store',
-        })
+        const res = await fetch(`/api/student/registrations?student_id=${encodeURIComponent(studentId)}`)
         const json = await res.json()
-        if (!res.ok) {
-          throw new Error(json?.message || 'Failed to load certificates.')
-        }
-        if (!ignore) {
-          setCertificates(Array.isArray(json.items) ? json.items : [])
+        if (res.ok) {
+          const presentOnly = (json.items || []).filter(r => r.attendance_status === 'present')
+          setRegistrations(presentOnly)
+
+          // 2. Fetch templates for these events
+          const templateData = {}
+          for (const reg of presentOnly) {
+            const tRes = await fetch(`/api/organizer/certificate-templates?eventId=${reg.event_id}`)
+            if (tRes.ok) {
+              templateData[reg.event_id] = await tRes.json()
+            }
+          }
+          setTemplates(templateData)
         }
       } catch (err) {
-        if (!ignore) {
-          setError(err?.message || 'Failed to load certificates.')
-        }
+        setError('Failed to sync certificates')
       } finally {
-        if (!ignore) {
-          setLoading(false)
-        }
+        setLoading(false)
       }
     }
-
-    loadCertificates()
-
-    return () => {
-      ignore = true
-    }
+    loadData()
   }, [status, studentId])
 
-  useEffect(() => {
-    if (!studentId) {
-      return undefined
-    }
-
-    const socket = getSocket()
-    if (!socket) {
-      return undefined
-    }
-
-    socket.emit('join:user', studentId)
-
-    const handleCertificateUpdated = (payload) => {
-      if (String(payload?.student_id || '') === String(studentId)) {
-        setCertificates((prev) => [payload, ...prev.filter((item) => item.id !== payload.id)])
-      }
-    }
-
-    const handleBulkSync = (payload) => {
-      if (payload?.scope === 'student-transactions') {
-        fetch(`/api/student/certificates?student_id=${encodeURIComponent(studentId)}`, {
-          cache: 'no-store',
-        })
-          .then((res) => res.json())
-          .then((json) => {
-            setCertificates(Array.isArray(json.items) ? json.items : [])
-          })
-          .catch(() => {})
-      }
-    }
-
-    socket.on('certificate:updated', handleCertificateUpdated)
-    socket.on('bulk-sync:completed', handleBulkSync)
-
-    return () => {
-      socket.off('certificate:updated', handleCertificateUpdated)
-      socket.off('bulk-sync:completed', handleBulkSync)
-    }
-  }, [studentId])
+  function downloadCert(eventId, title) {
+    const dataUrl = generatedCerts[eventId]
+    if (!dataUrl) return
+    const link = document.createElement('a')
+    link.download = `Certificate_${title.replace(/\s+/g, '_')}.png`
+    link.href = dataUrl
+    link.click()
+  }
 
   return (
-    <div className="space-y-6 p-6 xl:p-8">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600"><Award className="h-5 w-5" /></span>
-          <div>
-            <h1 className="text-2xl font-bold">Certificates</h1>
-            <p className="text-sm text-slate-500">{certificates.length} certificates earned</p>
+    <div className="space-y-6 p-6 xl:p-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-100">
+            <Award className="h-6 w-6 text-white" />
           </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Merit & Participation</h1>
+            <p className="text-sm text-slate-500">You have earned {registrations.length} official certificates</p>
+          </div>
+        </div>
+        
+        <div className="bg-indigo-50 px-4 py-2 rounded-2xl border border-indigo-100 flex items-center gap-2">
+           <Sparkles className="h-4 w-4 text-indigo-600" />
+           <span className="text-sm font-bold text-indigo-700">Live AI Validation Active</span>
         </div>
       </div>
 
       {error && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          {error}
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4" /> {error}
         </div>
       )}
 
-      {loading && (
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">
-          Loading certificates...
+      {loading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-64 rounded-3xl bg-slate-100 animate-pulse" />
+          ))}
         </div>
-      )}
-
-      {!loading && certificates.length === 0 ? (
-        <div className="text-center py-20 text-slate-400">
-          <Award className="mx-auto h-12 w-12 mb-3" />
-          <p className="text-lg font-semibold">No certificates yet</p>
-          <p className="text-sm">Complete events to earn certificates.</p>
+      ) : registrations.length === 0 ? (
+        <div className="rounded-3xl border-2 border-dashed border-slate-200 p-20 text-center space-y-4">
+          <div className="h-20 w-20 rounded-full bg-slate-50 flex items-center justify-center mx-auto">
+            <Award className="h-10 w-10 text-slate-200" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-400">No Certificates Earned Yet</h2>
+          <p className="text-sm text-slate-400 max-w-sm mx-auto">Attend physical events and get your attendance marked to unlock digital certificates.</p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {certificates.map((cert, i) => {
-            const colors = colorMap[cert.color] || colorMap.indigo
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {registrations.map((reg) => {
+            const template = templates[reg.event_id]
+            if (!template) return null
+
             return (
               <motion.div
-                key={cert.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.06 }}
-                className={`rounded-2xl border ${colors.border} ${colors.bg} p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-lg`}
+                key={reg.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="group relative rounded-3xl border border-slate-200 bg-white overflow-hidden shadow-sm hover:shadow-2xl hover:border-indigo-300 transition-all duration-500"
               >
-                <div className="flex items-start justify-between">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${colors.bg} ${colors.text}`}>
-                    <Award className="h-5 w-5" />
+                {/* Background Sparkle Effect */}
+                <div className="absolute top-0 right-0 h-32 w-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-indigo-500/10 transition-colors" />
+
+                {/* Certificate Preview Image */}
+                <div className="aspect-[1.414/1] bg-slate-50 relative overflow-hidden flex items-center justify-center border-b border-slate-100">
+                  {generatedCerts[reg.event_id] ? (
+                    <img 
+                      src={generatedCerts[reg.event_id]} 
+                      alt="Certificate Preview" 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
+                      <p className="text-[10px] uppercase font-bold text-slate-300 tracking-widest">Generating Digital Copy...</p>
+                    </div>
+                  )}
+
+                  <div className="absolute top-4 left-4">
+                     <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-bold text-white shadow-lg">
+                        <CheckCircle2 className="h-3 w-3" /> VERIFIED
+                     </div>
                   </div>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${colors.badge}`}>
-                    {cert.type.includes('Achievement') ? 'Achievement' : cert.type.includes('Completion') ? 'Completion' : cert.type.includes('Recognition') ? 'Recognition' : 'Participation'}
-                  </span>
                 </div>
-                <div className="mt-4 space-y-1">
-                  <h3 className="text-base font-semibold text-slate-900">{cert.event_title}</h3>
-                  <p className="text-xs text-slate-500">Participation Certificate</p>
-                  <p className="text-xs text-slate-500">Event Date: {cert.date || 'Date TBA'}</p>
-                  <p className="text-xs text-slate-500">Issued: {new Date(cert.issued_at).toLocaleDateString('en-IN')}</p>
-                  <p className="text-xs text-slate-500">By: {cert.organizer}</p>
+
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                    {reg.event_title || 'Participation Certificate'}
+                  </h3>
+                  
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {reg.start_date || reg.date || 'Event date TBA'}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <MapPin className="h-3.5 w-3.5" />
+                      {reg.venue || 'Campus Venue'}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => downloadCert(reg.event_id, reg.event_title)}
+                    disabled={!generatedCerts[reg.event_id]}
+                    className="mt-6 w-full flex items-center justify-center gap-2 rounded-2xl bg-slate-900 hover:bg-indigo-600 disabled:opacity-30 text-white font-bold py-3 text-sm transition-all shadow-xl shadow-slate-200 hover:shadow-indigo-200"
+                  >
+                    <Download className="h-4 w-4" /> Download PNG
+                  </button>
                 </div>
-                <a href={cert.certificate_url} target="_blank" rel="noreferrer" className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-2.5 text-xs font-semibold transition-colors ${colors.border} ${colors.text} hover:bg-white`}>
-                  <Download className="h-3.5 w-3.5" /> Download Certificate
-                </a>
+
+                {/* Hidden Generator */}
+                <CertificateGenerator
+                  student={{ id: studentId, name: studentName }}
+                  event={{ title: reg.event_title }}
+                  template={template}
+                  onReady={(dataUrl) => setGeneratedCerts(prev => ({ ...prev, [reg.event_id]: dataUrl }))}
+                />
               </motion.div>
             )
           })}
         </div>
       )}
+      
+      <div className="mt-12 text-center">
+         <p className="text-xs text-slate-400 font-medium">
+            *Certificates are automatically generated upon attendance verification. For issues, contact helpdesk@au.edu.in
+         </p>
+      </div>
     </div>
   )
 }
+

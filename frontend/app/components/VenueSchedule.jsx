@@ -125,54 +125,87 @@ export default function VenueSchedulePage({ role = 'dean' }) {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [view, setView] = useState('month') // 'month' | 'list'
 
-  const apiPath = role === 'vc' ? '/api/vc/events?limit=200'
-    : role === 'dean' ? '/api/dean/events?limit=200'
-    : '/api/registrar/events?limit=200'
+  const limit = 20 // Industry standard: 10-30 items max per request for instant feel
+
+  const apiPath = role === 'vc' ? `/api/vc/events?limit=${limit}`
+    : role === 'dean' ? `/api/dean/events?limit=${limit}`
+    : `/api/registrar/events?limit=${limit}`
 
   useEffect(() => {
+    let isMounted = true
     async function load() {
       try {
+        setLoading(true)
         const res = await fetch(apiPath, { cache: 'no-store' })
-        if (res.ok) {
+        if (res.ok && isMounted) {
           const data = await res.json()
-          setEvents(data.items || [])
+          setEvents(Array.isArray(data.items) ? data.items : [])
         }
       } catch { /* silently fail */ }
-      finally { setLoading(false) }
+      finally { if (isMounted) setLoading(false) }
     }
     load()
+    return () => { isMounted = false }
   }, [apiPath])
 
-  const year = currentDate.getFullYear()
-  const month = currentDate.getMonth()
-  const firstDay = new Date(year, month, 1).getDay()
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const { year, month, daysInMonth, firstDay, monthName } = useMemo(() => {
+    const y = currentDate.getFullYear()
+    const m = currentDate.getMonth()
+    const fd = new Date(y, m, 1).getDay()
+    const dim = new Date(y, m + 1, 0).getDate()
+    const mn = new Date(y, m).toLocaleString('default', { month: 'long' })
+    return { year: y, month: m, firstDay: fd, daysInMonth: dim, monthName: mn }
+  }, [currentDate])
 
   const filteredEvents = useMemo(() => {
+    const venueLower = selectedVenue.toLowerCase()
     return events.filter(e => {
       if (selectedVenue !== 'All Venues') {
         const venue = (e.venue || '').toLowerCase()
-        if (!venue.includes(selectedVenue.toLowerCase())) return false
+        if (!venue.includes(venueLower)) return false
       }
       return !!e.start_date
     })
   }, [events, selectedVenue])
 
-  function getEventsForDay(day) {
-    const d = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  // CRITICAL: Map events to days once, instead of filtering in the grid loop
+  const eventsByDay = useMemo(() => {
+    const map = {}
+    const monthStr = String(month + 1).padStart(2, '0')
+    
+    filteredEvents.forEach(e => {
+      const start = e.start_date?.slice(0, 10)
+      const end = e.end_date?.slice(0, 10) || start
+      
+      // Only process events that overlap with current month for efficiency
+      // Rough check: if start/end month matches current month
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = `${year}-${monthStr}-${String(day).padStart(2, '0')}`
+        if (start <= d && end >= d) {
+          if (!map[day]) map[day] = []
+          map[day].push(e)
+        }
+      }
+    })
+    return map
+  }, [filteredEvents, year, month, daysInMonth])
+
+  const upcomingEvents = useMemo(() => {
+    const now = new Date().getTime()
+    return [...filteredEvents]
+      .filter(e => e.start_date && new Date(e.start_date).getTime() >= now)
+      .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
+      .slice(0, 15)
+  }, [filteredEvents])
+
+  const todayEvents = useMemo(() => {
+    const d = new Date().toISOString().slice(0, 10)
     return filteredEvents.filter(e => {
       const start = e.start_date?.slice(0, 10)
       const end = e.end_date?.slice(0, 10) || start
       return start && start <= d && end >= d
     })
-  }
-
-  const monthName = new Date(year, month).toLocaleString('default', { month: 'long' })
-
-  const upcomingEvents = filteredEvents
-    .filter(e => e.start_date && new Date(e.start_date) >= new Date())
-    .sort((a, b) => new Date(a.start_date) - new Date(b.start_date))
-    .slice(0, 20)
+  }, [filteredEvents])
 
   if (loading) {
     return (
@@ -226,8 +259,8 @@ export default function VenueSchedulePage({ role = 'dean' }) {
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
+      <div className="grid lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-3 space-y-4">
           {view === 'month' && (
             <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
               {/* Calendar header */}
@@ -264,7 +297,7 @@ export default function VenueSchedulePage({ role = 'dean' }) {
                 {/* Days */}
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const day = i + 1
-                  const dayEvents = getEventsForDay(day)
+                  const dayEvents = eventsByDay[day] || []
                   const today = new Date()
                   const isToday = today.getDate() === day && today.getMonth() === month && today.getFullYear() === year
                   return (
@@ -338,31 +371,22 @@ export default function VenueSchedulePage({ role = 'dean' }) {
               <h3 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-emerald-600" /> Today's Events
               </h3>
-              {(() => {
-                const today = new Date()
-                const d = today.toISOString().slice(0, 10)
-                const todayEvents = filteredEvents.filter(e => {
-                  const start = e.start_date?.slice(0, 10)
-                  const end = e.end_date?.slice(0, 10) || start
-                  return start && start <= d && end >= d
-                })
-                return todayEvents.length > 0 ? (
-                  <div className="space-y-2">
-                    {todayEvents.map((ev, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setSelectedEvent(ev)}
-                        className="w-full text-left rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition-colors"
-                      >
-                        <p className="font-semibold text-sm text-slate-900 truncate">{ev.title}</p>
-                        {ev.venue && <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{ev.venue}</p>}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-400 text-center py-4">No events today</p>
-                )
-              })()}
+              {todayEvents.length > 0 ? (
+                <div className="space-y-2">
+                  {todayEvents.map((ev, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setSelectedEvent(ev)}
+                      className="w-full text-left rounded-xl border border-slate-200 p-3 hover:bg-slate-50 transition-colors"
+                    >
+                      <p className="font-semibold text-sm text-slate-900 truncate">{ev.title}</p>
+                      {ev.venue && <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><MapPin className="h-3 w-3" />{ev.venue}</p>}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400 text-center py-4">No events today</p>
+              )}
             </div>
           )}
 

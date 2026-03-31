@@ -1,6 +1,5 @@
 'use client'
-
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
 import {
@@ -11,6 +10,7 @@ import {
   Ticket,
   Clock,
   Building2,
+  RefreshCw,
 } from 'lucide-react'
 import getSocket from '../../../lib/socket'
 
@@ -21,21 +21,36 @@ export default function RegistrationsPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [eventFilter, setEventFilter] = useState('')
+  const [lastRefreshed, setLastRefreshed] = useState(null)
 
   const organizerName = session?.user?.name || session?.user?.email || ''
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
-      const [eventsRes, regsRes] = await Promise.all([
-        fetch('/api/student/events?limit=500', { cache: 'no-store' }),
+      // Fetch both published AND approved status events to catch all states
+      const [pubRes, approvedRes, regsRes] = await Promise.all([
+        fetch('/api/student/events?status=published&limit=500', { cache: 'no-store' }),
+        fetch('/api/student/events?status=approved&limit=500', { cache: 'no-store' }),
         fetch('/api/student/registrations', { cache: 'no-store' }),
       ])
-      const eventsJson = await eventsRes.json()
+      const pubJson = await pubRes.json()
+      const approvedJson = await approvedRes.json()
       const regsJson = await regsRes.json()
 
-      const allEvents = Array.isArray(eventsJson.items) ? eventsJson.items : []
+      const pubEvents = Array.isArray(pubJson.items) ? pubJson.items : []
+      const approvedEvents = Array.isArray(approvedJson.items) ? approvedJson.items : []
+
+      // Merge and deduplicate by _id
+      const seen = new Set()
+      const allEvents = [...pubEvents, ...approvedEvents].filter(e => {
+        const id = String(e._id)
+        if (seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
+
       const myEvents = organizerName
-        ? allEvents.filter((e) => e.organizer === organizerName)
+        ? allEvents.filter((e) => e.organizer === organizerName || e.organizer_name === organizerName)
         : allEvents
       setEvents(myEvents)
 
@@ -45,20 +60,24 @@ export default function RegistrationsPage() {
 
       const enriched = myRegs.map((r) => {
         const event = myEvents.find((e) => String(e._id) === String(r.event_id))
-        return { ...r, event_title: event?.title || 'Unknown', event_category: event?.category || '' }
+        return { ...r, event_title: event?.title || r.event_title || 'Unknown', event_category: event?.category || '' }
       })
 
       setRegistrations(enriched)
+      setLastRefreshed(new Date())
     } catch {
       // ignore
     } finally {
       setLoading(false)
     }
-  }
+  }, [organizerName])
 
   useEffect(() => {
     loadData()
-  }, [organizerName])
+    // Polling fallback every 30 seconds
+    const interval = setInterval(loadData, 30000)
+    return () => clearInterval(interval)
+  }, [loadData])
 
   useEffect(() => {
     const socket = getSocket()
@@ -70,7 +89,7 @@ export default function RegistrationsPage() {
       socket.off('registration:changed', handler)
       socket.off('dashboard:refresh', handler)
     }
-  }, [organizerName])
+  }, [loadData])
 
   const filtered = registrations.filter((r) => {
     if (eventFilter && String(r.event_id) !== eventFilter) return false
@@ -113,12 +132,21 @@ export default function RegistrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Registrations</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">Student Registrations</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {registrations.length} registration{registrations.length !== 1 ? 's' : ''} across {events.length} event{events.length !== 1 ? 's' : ''}
-        </p>
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Registrations</p>
+          <h1 className="mt-1 text-2xl font-bold text-slate-900">Student Registrations</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {registrations.length} registration{registrations.length !== 1 ? 's' : ''} across {events.length} event{events.length !== 1 ? 's' : ''}
+            {lastRefreshed && <span className="ml-2 text-slate-400">· Updated {lastRefreshed.toLocaleTimeString('en-IN')}</span>}
+          </p>
+        </div>
+        <button
+          onClick={loadData}
+          className="flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors mt-1 shrink-0"
+        >
+          <RefreshCw className="h-4 w-4" /> Refresh
+        </button>
       </div>
 
       {/* Filters */}

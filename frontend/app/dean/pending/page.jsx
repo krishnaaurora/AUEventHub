@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, memo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ClipboardCheck,
@@ -13,13 +14,79 @@ import {
   X,
   AlertCircle,
   MessageSquare,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import getSocket from '../../../lib/socket'
 
+const EventRowSkeleton = () => (
+  <tr className="border-b border-slate-50 animate-pulse">
+    <td className="px-5 py-3.5"><div className="h-4 w-32 bg-slate-200 rounded" /></td>
+    <td className="px-5 py-3.5"><div className="h-4 w-24 bg-slate-100 rounded" /></td>
+    <td className="px-5 py-3.5 hidden md:table-cell"><div className="h-4 w-20 bg-slate-50 rounded" /></td>
+    <td className="px-5 py-3.5 hidden lg:table-cell"><div className="h-4 w-24 bg-slate-50 rounded" /></td>
+    <td className="px-5 py-3.5 hidden lg:table-cell"><div className="h-4 w-16 bg-slate-50 rounded" /></td>
+    <td className="px-5 py-3.5 hidden xl:table-cell"><div className="h-4 w-16 bg-slate-50 rounded" /></td>
+    <td className="px-5 py-3.5 hidden xl:table-cell"><div className="h-4 w-20 bg-slate-50 rounded" /></td>
+    <td className="px-5 py-3.5"><div className="h-6 w-28 bg-amber-50 rounded-full" /></td>
+    <td className="px-5 py-3.5 text-right"><div className="h-8 w-24 bg-slate-100 rounded-lg ml-auto" /></td>
+  </tr>
+)
+
+const EventRow = memo(({ event, i, onApprove, onReject, actionLoading }) => (
+  <motion.tr
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ delay: i * 0.03 }}
+    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
+  >
+    <td className="px-5 py-3.5 font-medium text-slate-800 max-w-[200px] truncate">{event.title}</td>
+    <td className="px-5 py-3.5 text-slate-600">{event.organizer || '—'}</td>
+    <td className="px-5 py-3.5 text-slate-600 hidden md:table-cell">{event.department || '—'}</td>
+    <td className="px-5 py-3.5 text-slate-600 hidden lg:table-cell">{event.venue || '—'}</td>
+    <td className="px-5 py-3.5 text-slate-600 hidden lg:table-cell">{event.start_date || event.date || '—'}</td>
+    <td className="px-5 py-3.5 text-slate-600 hidden xl:table-cell">{event.end_date || '—'}</td>
+    <td className="px-5 py-3.5 text-slate-600 hidden xl:table-cell">{event.approval?.submitted_at || event.created_at || '—'}</td>
+    <td className="px-5 py-3.5">
+      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+        Pending Dean Approval
+      </span>
+    </td>
+    <td className="px-5 py-3.5">
+      <div className="flex items-center justify-end gap-2">
+        <Link href={`/dean/event/${event._id}`}>
+          <button className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        </Link>
+        <button
+          onClick={() => onApprove(event)}
+          disabled={actionLoading === event._id}
+          className="rounded-lg bg-emerald-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => onReject(event)}
+          disabled={actionLoading === event._id}
+          className="rounded-lg bg-rose-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
+        >
+          <XCircle className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </td>
+  </motion.tr>
+))
+
+EventRow.displayName = 'EventRow'
+
 export default function PendingApprovalsPage() {
+  const router = useRouter()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
   const [actionLoading, setActionLoading] = useState(null)
   const [rejectModal, setRejectModal] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -27,11 +94,17 @@ export default function PendingApprovalsPage() {
   const [approveComment, setApproveComment] = useState('')
   const [commentError, setCommentError] = useState('')
 
-  async function loadPending() {
+  async function loadPending(pageNum = 1) {
     try {
-      const res = await fetch('/api/dean/events?filter=pending', { cache: 'no-store' })
+      setLoading(true)
+      const res = await fetch(`/api/dean/events?filter=pending&page=${pageNum}&limit=20`, { cache: 'no-store' })
       const json = await res.json()
       setEvents(Array.isArray(json.items) ? json.items : [])
+      setHasMore(json.items?.length === 20)
+      
+      if (json.items?.length === 20) {
+        router.prefetch(`/api/dean/events?filter=pending&page=${pageNum + 1}&limit=20`)
+      }
     } catch {
       // silently fail
     } finally {
@@ -39,7 +112,7 @@ export default function PendingApprovalsPage() {
     }
   }
 
-  useEffect(() => { loadPending() }, [])
+  useEffect(() => { loadPending(page) }, [page])
 
   useEffect(() => {
     const socket = getSocket()
@@ -107,14 +180,6 @@ export default function PendingApprovalsPage() {
     )
   })
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -139,13 +204,11 @@ export default function PendingApprovalsPage() {
         </div>
       </div>
 
-      {/* Mandatory comment notice */}
       <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-2">
         <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
         <p className="text-sm text-amber-700"><strong>Note:</strong> A comment is required before approving or rejecting any event.</p>
       </div>
 
-      {/* Table */}
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -163,7 +226,9 @@ export default function PendingApprovalsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => <EventRowSkeleton key={i} />)
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="text-center py-12 text-slate-400">
                     No pending events found.
@@ -171,57 +236,43 @@ export default function PendingApprovalsPage() {
                 </tr>
               ) : (
                 filtered.map((event, i) => (
-                  <motion.tr
+                  <EventRow
                     key={event._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-                  >
-                    <td className="px-5 py-3.5 font-medium text-slate-800 max-w-[200px] truncate">{event.title}</td>
-                    <td className="px-5 py-3.5 text-slate-600">{event.organizer || '—'}</td>
-                    <td className="px-5 py-3.5 text-slate-600 hidden md:table-cell">{event.department || '—'}</td>
-                    <td className="px-5 py-3.5 text-slate-600 hidden lg:table-cell">{event.venue || '—'}</td>
-                    <td className="px-5 py-3.5 text-slate-600 hidden lg:table-cell">{event.start_date || event.date || '—'}</td>
-                    <td className="px-5 py-3.5 text-slate-600 hidden xl:table-cell">{event.end_date || '—'}</td>
-                    <td className="px-5 py-3.5 text-slate-600 hidden xl:table-cell">{event.approval?.submitted_at || event.created_at || '—'}</td>
-                    <td className="px-5 py-3.5">
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                        Pending Dean Approval
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link href={`/dean/event/${event._id}`}>
-                          <button className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 transition-colors">
-                            <Eye className="h-3.5 w-3.5" />
-                          </button>
-                        </Link>
-                        <button
-                          onClick={() => { setApproveModal(event); setApproveComment(''); setCommentError('') }}
-                          disabled={actionLoading === event._id}
-                          className="rounded-lg bg-emerald-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 transition-colors disabled:opacity-50"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => { setRejectModal(event); setCommentError('') }}
-                          disabled={actionLoading === event._id}
-                          className="rounded-lg bg-rose-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
-                        >
-                          <XCircle className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </motion.tr>
+                    event={event}
+                    i={i}
+                    onApprove={(e) => { setApproveModal(e); setApproveComment(''); setCommentError('') }}
+                    onReject={(e) => { setRejectModal(e); setCommentError('') }}
+                    actionLoading={actionLoading}
+                  />
                 ))
               )}
             </tbody>
           </table>
         </div>
+        
+        <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-t border-slate-100">
+          <p className="text-xs text-slate-500">
+            Page <span className="font-semibold text-slate-900">{page}</span>
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={!hasMore}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Approve Modal */}
       <AnimatePresence>
         {approveModal && (
           <motion.div
@@ -265,7 +316,6 @@ export default function PendingApprovalsPage() {
         )}
       </AnimatePresence>
 
-      {/* Reject Modal */}
       <AnimatePresence>
         {rejectModal && (
           <motion.div

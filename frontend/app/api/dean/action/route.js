@@ -8,6 +8,7 @@ import {
 } from '../../_lib/db'
 import { ensureStudentTransactionTables, getPool } from '../../_lib/pg'
 import { emitSocketEvent } from '../../../../server/socket'
+import redis from '../../../../lib/redis'
 import { requireDeanAccess } from '../_lib/auth'
 
 export async function POST(request) {
@@ -116,6 +117,14 @@ export async function POST(request) {
         // notification failure is non-critical
       }
 
+      // Invalidate Dean cache
+      try {
+        if (redis && redis.isReady) {
+          const keys = await redis.keys('events_dean_*')
+          if (keys.length > 0) await redis.del(keys)
+        }
+      } catch (e) { /* silent */ }
+
       emitSocketEvent('dashboard:refresh', { scope: 'dean' }, 'role:dean')
       emitSocketEvent('dashboard:refresh', { scope: 'registrar' }, 'role:registrar')
       emitSocketEvent('dashboard:refresh', { scope: 'organizer' }, 'role:organizer')
@@ -173,6 +182,14 @@ export async function POST(request) {
       } catch {
         // notification failure is non-critical
       }
+
+      // Invalidate Dean cache
+      try {
+        if (redis && redis.isReady) {
+          const keys = await redis.keys('events_dean_*')
+          if (keys.length > 0) await redis.del(keys)
+        }
+      } catch (e) { /* silent */ }
 
       emitSocketEvent('dashboard:refresh', { scope: 'dean' }, 'role:dean')
       emitSocketEvent('dashboard:refresh', { scope: 'organizer' }, 'role:organizer')

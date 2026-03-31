@@ -14,6 +14,7 @@ import {
   ChevronDown,
   MessageSquare,
   Sparkles,
+  Pencil,
 } from 'lucide-react'
 import getSocket from '../../../lib/socket'
 
@@ -300,6 +301,15 @@ export default function MyEventsPage() {
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center justify-end gap-2">
+                        {event.status === 'pending_dean' && (
+                          <Link
+                            href={`/organizer/edit-event/${event._id}`}
+                            className="rounded-lg p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition"
+                            title="Edit"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Link>
+                        )}
                         <Link
                           href={`/organizer/my-events/${event._id}`}
                           className="rounded-lg p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition"

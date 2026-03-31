@@ -13,6 +13,7 @@ import {
   Eye,
   UserCheck,
 } from 'lucide-react'
+import Link from 'next/link'
 
 function VCDashboardPage() {
   const [stats, setStats] = useState(null)
@@ -152,7 +153,7 @@ function VCDashboardPage() {
                   <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
                       <UserCheck className="h-3 w-3" />
-                      {event.organizer_name}
+                      {event.organizer || 'Unknown Organizer'}
                     </span>
                     <span className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
@@ -168,9 +169,9 @@ function VCDashboardPage() {
                   <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
                     Pending VC Approval
                   </span>
-                  <button className="px-4 py-2 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors">
+                  <Link href={`/vc/event/${event._id}`} className="px-4 py-2 bg-emerald-500 text-white text-sm rounded-lg hover:bg-emerald-600 transition-colors">
                     Review
-                  </button>
+                  </Link>
                 </div>
               </motion.div>
             ))}

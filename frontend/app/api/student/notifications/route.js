@@ -11,14 +11,14 @@ export async function GET(request) {
 
     const result = userId
       ? await pool.query(
-          `SELECT id, user_id, message, priority, created_at
+          `SELECT id, user_id, message, priority, created_at, is_read
            FROM notifications
            WHERE user_id = $1
            ORDER BY created_at DESC`,
           [userId],
         )
       : await pool.query(
-          `SELECT id, user_id, message, priority, created_at
+          `SELECT id, user_id, message, priority, created_at, is_read
            FROM notifications
            ORDER BY created_at DESC`,
         )

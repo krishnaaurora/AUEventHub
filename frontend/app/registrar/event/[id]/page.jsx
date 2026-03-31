@@ -26,6 +26,7 @@ import {
   Zap,
   BarChart3,
   MessageSquare,
+  Check,
 } from 'lucide-react'
 
 export default function EventDetailPage() {
@@ -39,6 +40,7 @@ export default function EventDetailPage() {
   const [approveModal, setApproveModal] = useState(false)
   const [approveComment, setApproveComment] = useState('')
   const [actionResult, setActionResult] = useState(null)
+  const [actionLoading, setActionLoading] = useState(null)
 
   async function loadEvent() {
     try {

@@ -8,6 +8,7 @@ import {
   getEventTrendingCollection,
 } from '../../_lib/db'
 import { requireDeanAccess } from '../_lib/auth'
+import redis from '../../../../lib/redis'
 
 function toPositiveInt(value, fallback) {
   const num = Number.parseInt(value, 10)
@@ -29,7 +30,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const filter = String(searchParams.get('filter') || '').trim()
     const eventId = String(searchParams.get('event_id') || '').trim()
-    const limit = toPositiveInt(searchParams.get('limit'), 100)
+    const limit = 20 // Enforced 20-item limit for performance
+    const page = toPositiveInt(searchParams.get('page'), 1)
 
     // Single event detail view
     if (eventId) {
@@ -67,47 +69,94 @@ export async function GET(request) {
       statusQuery = { status: 'rejected' }
     }
 
-    const events = await eventsCol
-      .find(statusQuery)
-      .sort({ created_at: -1, _id: -1 })
-      .limit(limit)
-      .toArray()
-
-    const eventIds = events.map((e) => String(e._id))
-
-    let approvalsMap = {}
-    if (eventIds.length > 0) {
-      const approvals = await approvalsCol
-        .find({ event_id: { $in: eventIds } })
-        .toArray()
-      approvalsMap = approvals.reduce((acc, a) => {
-        acc[a.event_id] = a
-        return acc
-      }, {})
+    const cacheKey = `events_dean_${filter}_${page}_${limit}`
+    
+    // 1. Try Cache First
+    if (redis && redis.isReady) {
+      const cached = await redis.get(cacheKey)
+      if (cached) {
+        // Return instantly
+        const parsed = JSON.parse(cached)
+        // BACKGROUND REFRESH (Async)
+        // Only refresh if cache is older than 30s (we store metadata in the cache for this)
+        if (!parsed._timestamp || Date.now() - parsed._timestamp > 30000) {
+          console.log("♻️ Background Refresh Triggered")
+          // No await here
+          fetchEventsAndCache(eventsCol, statusQuery, filter, page, limit, cacheKey)
+        }
+        return NextResponse.json(parsed)
+      }
     }
 
-    // For filtered views, further filter by dean_status
-    let items = events.map((e) => ({
-      ...e,
-      _id: String(e._id),
-      approval: approvalsMap[String(e._id)] || null,
-    }))
+    // 2. Cold Start: Fetch fresh
+    console.time("API_COLD_FETCH")
+    const responseData = await fetchEventsAndCache(eventsCol, statusQuery, filter, page, limit, cacheKey)
+    console.timeEnd("API_COLD_FETCH")
 
-    if (filter === 'approved') {
-      items = items.filter(
-        (e) => e.approval?.dean_status === 'approved'
-      )
-    } else if (filter === 'rejected') {
-      items = items.filter(
-        (e) => e.approval?.dean_status === 'rejected'
-      )
-    }
-
-    return NextResponse.json({ items })
+    return NextResponse.json(responseData)
   } catch (error) {
     return NextResponse.json(
       { message: 'Failed to fetch dean events.', detail: error.message },
       { status: 500 }
     )
   }
+}
+
+// Extracted for re-use in background update
+async function fetchEventsAndCache(eventsCol, statusQuery, filter, page, limit, cacheKey) {
+  const pipeline = [
+    { $match: statusQuery },
+    { $sort: { created_at: -1, _id: -1 } },
+    {
+      $lookup: {
+        from: "event_approvals",
+        let: { e_id: { $toString: "$_id" } },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$event_id", "$$e_id"] } } }
+        ],
+        as: "approvalDocs"
+      }
+    },
+    {
+      $addFields: {
+        approval: { $arrayElemAt: ["$approvalDocs", 0] }
+      }
+    },
+    {
+      $project: {
+        approvalDocs: 0
+      }
+    }
+  ]
+
+  if (filter === 'approved') {
+    pipeline.push({ $match: { "approval.dean_status": "approved" } })
+  } else if (filter === 'rejected') {
+    pipeline.push({ $match: { "approval.dean_status": "rejected" } })
+  }
+
+  pipeline.push({ $skip: (page - 1) * limit })
+  pipeline.push({ $limit: limit })
+
+  const events = await eventsCol.aggregate(pipeline).toArray()
+
+  const items = events.map((e) => ({
+    ...e,
+    _id: String(e._id),
+    approval: e.approval || null,
+  }))
+
+  const responseData = { 
+    items, 
+    _timestamp: Date.now(), 
+    _source: 'cache' 
+  }
+
+  try {
+    if (redis && redis.isReady) {
+      await redis.set(cacheKey, JSON.stringify(responseData), "EX", 60)
+    }
+  } catch (e) { /* ignore */ }
+
+  return responseData
 }

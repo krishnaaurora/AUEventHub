@@ -90,6 +90,16 @@ function BrowseEventsContent() {
   const [selectedEvent, setSelectedEvent] = useState(null)
   const studentId = session?.user?.registrationId || session?.user?.id || ''
 
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (selectedEvent) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [selectedEvent])
+
   async function trackEventView(eventId) {
     if (typeof window === 'undefined' || !eventId) {
       return
@@ -121,6 +131,18 @@ function BrowseEventsContent() {
         return
       }
 
+      // ─── Instant Cache Recovery ──────────────────────────────────────────────
+      try {
+        const cached = localStorage.getItem(`events_cache_${studentId || 'anon'}`)
+        if (cached) {
+          const data = JSON.parse(cached)
+          setEvents(data.events || [])
+          setRecommendationIds(data.recommendationIds || [])
+          setRegisteredEventIds(data.registeredEventIds || [])
+          setLoading(false)
+        }
+      } catch (e) { /* ignore */ }
+
       setLoading(true)
       setError('')
 
@@ -129,7 +151,7 @@ function BrowseEventsContent() {
           ? `/api/student/registrations?student_id=${encodeURIComponent(studentId)}`
           : null
         const [eventsRes, recommendationsRes, registrationsRes] = await Promise.all([
-          fetch('/api/student/events?status=approved&limit=100', { cache: 'no-store' }),
+          fetch('/api/student/events?status=published&limit=100', { cache: 'no-store' }),
           fetch(`/api/student/ai-recommendations?student_id=${encodeURIComponent(studentId)}`, {
             cache: 'no-store',
           }),
@@ -138,30 +160,31 @@ function BrowseEventsContent() {
             : Promise.resolve(new Response(JSON.stringify({ items: [] }), { status: 200 })),
         ])
 
-        if (!eventsRes.ok || !recommendationsRes.ok || !registrationsRes.ok) {
-          throw new Error('Unable to fetch events from database.')
-        }
-
         const eventsJson = await eventsRes.json()
         const recommendationsJson = await recommendationsRes.json()
         const registrationsJson = await registrationsRes.json()
 
         if (!ignore) {
-          setEvents(Array.isArray(eventsJson.items) ? eventsJson.items : [])
-          setRecommendationIds(
-            Array.isArray(recommendationsJson.recommended_events)
+          const nextData = {
+            events: Array.isArray(eventsJson.items) ? eventsJson.items : [],
+            recommendationIds: Array.isArray(recommendationsJson.recommended_events)
               ? recommendationsJson.recommended_events
               : [],
-          )
-          setRegisteredEventIds(
-            Array.isArray(registrationsJson.items)
+            registeredEventIds: Array.isArray(registrationsJson.items)
               ? registrationsJson.items.map((item) => String(item.event_id))
               : [],
-          )
+          }
+
+          setEvents(nextData.events)
+          setRecommendationIds(nextData.recommendationIds)
+          setRegisteredEventIds(nextData.registeredEventIds)
+
+          // ─── Update Cache ──────────────────────────────────────────────────────
+          localStorage.setItem(`events_cache_${studentId || 'anon'}`, JSON.stringify(nextData))
         }
       } catch (err) {
         if (!ignore) {
-          setError(err?.message || 'Failed to fetch event data.')
+          setError('Unable to refresh events. Showing cached data.')
         }
       } finally {
         if (!ignore) {
@@ -267,12 +290,12 @@ function BrowseEventsContent() {
     }
 
     const handleBulkSync = (payload) => {
-      if (payload?.scope === 'student-events' || payload?.scope === 'student-transactions') {
+      if (payload?.scope === 'student-events' || payload?.scope === 'student-transactions' || payload?.scope === 'student') {
         setLoading(true)
         setError('')
         setNotice('Realtime bulk sync detected. Refreshing event data...')
         Promise.all([
-          fetch('/api/student/events?status=approved&limit=100', { cache: 'no-store' }).then((res) => res.json()),
+          fetch('/api/student/events?status=published&limit=100', { cache: 'no-store' }).then((res) => res.json()),
           fetch(`/api/student/ai-recommendations?student_id=${encodeURIComponent(studentId)}`, { cache: 'no-store' }).then((res) => res.json()),
           studentId
             ? fetch(`/api/student/registrations?student_id=${encodeURIComponent(studentId)}`, { cache: 'no-store' }).then((res) => res.json())
@@ -282,6 +305,7 @@ function BrowseEventsContent() {
           setRecommendationIds(Array.isArray(recommendationsJson.recommended_events) ? recommendationsJson.recommended_events : [])
           setRegisteredEventIds(Array.isArray(registrationsJson.items) ? registrationsJson.items.map((item) => String(item.event_id)) : [])
           setLoading(false)
+          setNotice('')
         }).catch(() => {
           setLoading(false)
         })
@@ -293,6 +317,7 @@ function BrowseEventsContent() {
     socket.on('ai-recommendations:updated', handleRecommendationsUpdated)
     socket.on('event-details:updated', handleEventDetailsUpdated)
     socket.on('bulk-sync:completed', handleBulkSync)
+    socket.on('dashboard:refresh', handleBulkSync)
 
     return () => {
       socket.off('event:new', handleNewEvent)
@@ -300,6 +325,7 @@ function BrowseEventsContent() {
       socket.off('ai-recommendations:updated', handleRecommendationsUpdated)
       socket.off('event-details:updated', handleEventDetailsUpdated)
       socket.off('bulk-sync:completed', handleBulkSync)
+      socket.off('dashboard:refresh', handleBulkSync)
     }
   }, [selectedEvent?._id, studentId])
 
@@ -532,23 +558,44 @@ function BrowseEventsContent() {
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
             onClick={() => setSelectedEvent(null)}
           >
+            {/* Modal container — stops click propagation + captures all wheel/touch events */}
             <motion.div
-              initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"
+              onWheel={(e) => e.stopPropagation()}
+              className="relative w-full max-w-2xl max-h-[88vh] rounded-3xl bg-white shadow-2xl flex flex-col overflow-hidden"
             >
-              <button onClick={() => setSelectedEvent(null)} className="absolute right-4 top-4 rounded-full border border-slate-200 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 z-10">
+              {/* Close button — always visible */}
+              <button
+                onClick={() => setSelectedEvent(null)}
+                className="absolute right-4 top-4 z-10 rounded-full bg-white/80 border border-slate-200 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 shadow-sm backdrop-blur-sm"
+              >
                 <X className="h-4 w-4" />
               </button>
-              <img src={selectedEvent.poster} alt={selectedEvent.title} className="h-48 w-full rounded-2xl object-cover" />
-              <div className="mt-5 space-y-4">
-                <h2 className="text-2xl font-bold">{selectedEvent.title}</h2>
+
+              {/* Poster — fixed at top, never scrolls away */}
+              <div className="shrink-0">
+                <img
+                  src={selectedEvent.poster || '/assets/seminar.png'}
+                  alt={selectedEvent.title}
+                  className="h-52 w-full object-cover"
+                  onError={(e) => { e.target.onerror = null; e.target.src = '/assets/seminar.png' }}
+                />
+              </div>
+
+              {/* Scrollable body — this is the ONLY scroll container */}
+              <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-4">
+                <h2 className="text-2xl font-bold pr-8">{selectedEvent.title}</h2>
                 <div className="flex flex-wrap gap-3 text-xs text-slate-500">
                   <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{selectedEvent.venue}</span>
                   <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{selectedEvent.dateTime || selectedEvent.date}</span>
                   {selectedEvent.organizer && <span className="flex items-center gap-1"><Users className="h-3 w-3" />{selectedEvent.organizer}</span>}
                 </div>
-                {selectedEvent.category && <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">{selectedEvent.category}</span>}
+                {selectedEvent.category && (
+                  <span className="inline-block rounded-full bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-700">{selectedEvent.category}</span>
+                )}
                 <p className="text-sm text-slate-600 leading-relaxed">{selectedEvent.description}</p>
                 {selectedEvent.aiSummary && (
                   <div className="rounded-2xl bg-cyan-50 border border-cyan-200 p-4">
@@ -556,30 +603,56 @@ function BrowseEventsContent() {
                     <p className="mt-2 text-sm text-slate-700">{selectedEvent.aiSummary}</p>
                   </div>
                 )}
-                {selectedEvent.speakers?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">Guest Speakers</p>
-                    <p className="text-sm text-slate-600">{selectedEvent.speakers.join(', ')}</p>
-                  </div>
+                {(() => {
+                  const speakers = Array.isArray(selectedEvent.speakers)
+                    ? selectedEvent.speakers
+                    : typeof selectedEvent.speakers === 'string' && selectedEvent.speakers
+                    ? [selectedEvent.speakers] : []
+                  return speakers.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Guest Speakers</p>
+                      <p className="text-sm text-slate-600">{speakers.join(', ')}</p>
+                    </div>
+                  ) : null
+                })()}
+                {(() => {
+                  const schedule = Array.isArray(selectedEvent.schedule)
+                    ? selectedEvent.schedule
+                    : typeof selectedEvent.schedule === 'string' && selectedEvent.schedule
+                    ? [selectedEvent.schedule] : []
+                  return schedule.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Schedule</p>
+                      <ul className="mt-1 space-y-1 text-sm text-slate-600">{schedule.map((s) => <li key={s}>• {s}</li>)}</ul>
+                    </div>
+                  ) : null
+                })()}
+                {(() => {
+                  const instructions = Array.isArray(selectedEvent.instructions)
+                    ? selectedEvent.instructions
+                    : typeof selectedEvent.instructions === 'string' && selectedEvent.instructions
+                    ? [selectedEvent.instructions] : []
+                  return instructions.length > 0 ? (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">Instructions</p>
+                      <ul className="mt-1 space-y-1 text-sm text-slate-600">{instructions.map((s) => <li key={s}>• {s}</li>)}</ul>
+                    </div>
+                  ) : null
+                })()}
+                {selectedEvent.seats && (
+                  <p className="text-sm font-semibold text-amber-600">{selectedEvent.seats} seats remaining</p>
                 )}
-                {selectedEvent.schedule?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">Schedule</p>
-                    <ul className="mt-1 space-y-1 text-sm text-slate-600">{selectedEvent.schedule.map((s) => <li key={s}>• {s}</li>)}</ul>
-                  </div>
-                )}
-                {selectedEvent.instructions?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-800">Instructions</p>
-                    <ul className="mt-1 space-y-1 text-sm text-slate-600">{selectedEvent.instructions.map((s) => <li key={s}>• {s}</li>)}</ul>
-                  </div>
-                )}
-                {selectedEvent.seats && <p className="text-sm font-semibold text-amber-600">{selectedEvent.seats} seats remaining</p>}
-                <div className="flex gap-3 pt-2">
+
+                {/* Action buttons */}
+                <div className="flex gap-3 pt-2 pb-2">
                   <button
                     onClick={() => handleRegister(selectedEvent)}
                     disabled={registeringEventId === String(selectedEvent._id) || registeredEventIds.includes(String(selectedEvent._id))}
-                    className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold text-white ${registeredEventIds.includes(String(selectedEvent._id)) ? 'bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-700'} disabled:cursor-not-allowed disabled:opacity-70`}
+                    className={`flex-1 rounded-full px-4 py-3 text-sm font-semibold text-white ${
+                      registeredEventIds.includes(String(selectedEvent._id))
+                        ? 'bg-emerald-600'
+                        : 'bg-indigo-600 hover:bg-indigo-700'
+                    } disabled:cursor-not-allowed disabled:opacity-70 transition-colors`}
                   >
                     {registeredEventIds.includes(String(selectedEvent._id))
                       ? 'Already Registered'
@@ -595,7 +668,12 @@ function BrowseEventsContent() {
                   >
                     + Calendar
                   </a>
-                  <button onClick={() => setSelectedEvent(null)} className="rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50">Close</button>
+                  <button
+                    onClick={() => setSelectedEvent(null)}
+                    className="rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
             </motion.div>

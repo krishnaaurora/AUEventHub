@@ -30,24 +30,25 @@ const HoverBox = React.memo(({ i, j }) => {
 HoverBox.displayName = "HoverBox";
 
 export const BoxesCore = ({ className, ...rest }) => {
-    const rows = new Array(150).fill(1);
-    const cols = new Array(80).fill(1);
-
+    // Optimized resolution: 65x35 = ~2,275 divs (80% less than before)
+    const rows = new Array(65).fill(1);
+    const cols = new Array(35).fill(1);
+    
     return (
         <div
             style={{
                 transform: `translate(-40%,-60%) skewX(-48deg) skewY(14deg) scale(0.675) rotate(0deg) translateZ(0)`,
             }}
             className={cn(
-                "absolute -left-[10%] p-4 -top-1/4 flex",
+                "absolute -left-[5%] p-4 -top-1/4 flex flex-shrink-0",
                 className
             )}
             {...rest}
         >
             {rows.map((_, i) => (
-                <div key={`row-${i}`} className="w-16 h-8 border-l border-slate-500/40 relative">
+                <div key={`row-${i}`} className="w-20 h-10 border-l border-slate-500/30 relative flex-shrink-0">
                     {cols.map((_, j) => (
-                        <HoverBox key={`col-${j}`} i={i} j={j} />
+                        <HoverBox key={`col-${j}`} />
                     ))}
                 </div>
             ))}

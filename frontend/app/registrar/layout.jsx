@@ -81,7 +81,7 @@ export default function RegistrarLayout({ children }) {
   if (!session || session.user?.role !== 'registrar') return null
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-slate-50">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -164,7 +164,7 @@ export default function RegistrarLayout({ children }) {
       </aside>
 
       {/* Main content */}
-      <div className={`flex flex-1 flex-col transition-all duration-300 ${isCollapsed ? 'lg:pl-20' : 'lg:pl-64'}`}>
+      <div className={`flex flex-1 flex-col transition-all duration-300 ${isCollapsed ? 'lg:pl-20' : 'lg:pl-64'} min-h-screen relative`}>
         {/* Top navbar */}
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between bg-white px-6 shadow-sm border-b border-slate-200">
           <div className="flex items-center gap-4">
@@ -201,7 +201,7 @@ export default function RegistrarLayout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
   )

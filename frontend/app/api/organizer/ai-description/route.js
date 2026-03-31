@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
 
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
-
 function buildFallbackDescription({ title, category, department, venue }) {
   const departmentLine = department ? ` organized by the ${department} department` : ''
   const venueLine = venue ? ` at ${venue}` : ''
@@ -28,8 +26,9 @@ export async function POST(request) {
       )
     }
 
-    const apiKey = process.env.GEMINI_API_KEY
+    const apiKey = process.env.GROK_API_KEY
     if (!apiKey) {
+      console.warn('GROK_API_KEY is missing, using fallback description.')
       return NextResponse.json({ description: buildFallbackDescription({ title, category, department, venue }), source: 'fallback' })
     }
 
@@ -43,34 +42,47 @@ export async function POST(request) {
       `Venue: ${venue || 'Not specified'}`,
     ].join('\n')
 
-    for (const model of GEMINI_MODELS) {
-      const geminiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    try {
+      const grokResponse = await fetch(
+        'https://api.x.ai/v1/chat/completions',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
           body: JSON.stringify({
-            contents: [
+            model: "grok-beta",
+            messages: [
               {
-                parts: [{ text: prompt }],
+                role: "system",
+                content: "You are a professional university event organizer assistant. Write engaging event descriptions."
               },
+              {
+                role: "user",
+                content: prompt
+              }
             ],
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 220,
-            },
+            temperature: 0.7,
+            max_tokens: 250,
           }),
         },
       )
 
-      const geminiJson = await geminiResponse.json()
+      if (!grokResponse.ok) {
+        throw new Error(`Grok API Error: ${grokResponse.status}`)
+      }
+
+      const grokJson = await grokResponse.json()
       const description = String(
-        geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        grokJson?.choices?.[0]?.message?.content || ''
       ).trim()
 
-      if (geminiResponse.ok && description) {
-        return NextResponse.json({ description, source: 'gemini', model })
+      if (description) {
+        return NextResponse.json({ description, source: 'grok', model: 'grok-beta' })
       }
+    } catch (apiError) {
+      console.error('Failed to fetch from Grok API:', apiError)
     }
 
     return NextResponse.json({ description: buildFallbackDescription({ title, category, department, venue }), source: 'fallback' })

@@ -172,7 +172,7 @@ function VCRegistrarApprovedPage() {
 
   const filteredEvents = events.filter(event =>
     event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.organizer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    event.organizer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     event.department?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -246,9 +246,9 @@ function VCRegistrarApprovedPage() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-slate-900 text-base">{event.title}</h3>
                   <div className="mt-2 flex flex-wrap gap-4 text-sm text-slate-500">
-                    {event.organizer_name && (
+                    {event.organizer && (
                       <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />{event.organizer_name}
+                        <User className="h-3 w-3" />{event.organizer}
                       </span>
                     )}
                     {event.department && (

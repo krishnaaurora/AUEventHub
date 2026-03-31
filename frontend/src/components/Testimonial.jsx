@@ -32,7 +32,7 @@ function Testimonial() {
                             </svg>
                         </div>
                         <p className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-200 leading-relaxed mb-6">
-                            &ldquo;Aurora Hub has transformed the way we organize and manage campus events. What once required multiple approvals, paperwork, and manual coordination is now streamlined into a single digital platform. From planning and approvals to student participation and analytics, Aurora Hub simplifies every stage of the process. It empowers organizers to focus more on creativity and innovation while ensuring transparency and efficiency across the university.&rdquo;
+                            &ldquo;Aurora Hub has transformed the way we organize and manage campus events. What once required multiple approvals, paperwork, and manual coordination is now streamlined into a single digital platform. From planning and approvals to student participation and analytics, Aurora Hub simplifies every stage of the process. It empowers organizers to focus more on creativity and innovation while ensuring transparency and efficiency across the university. By centralizing our administrative workflows, we&rsquo;ve seen a significant increase in student engagement and a reduction in logistic turnaround times. Our vision is to create a connected campus ecosystem where every event is an opportunity for growth and discovery.&rdquo;
                         </p>
                     </div>
                     <div className="flex items-center">
@@ -79,6 +79,29 @@ function Testimonial() {
 
                     {/* Small Cards Container */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Dr. T. Malathi Card (Moved Up) */}
+                        <motion.div
+                            initial={{ opacity: 0, x: 80 }}
+                            whileInView={{ opacity: 1, x: 0 }}
+                            viewport={{ once: true, margin: "-50px" }}
+                            transition={{ duration: 0.5, delay: 0.4 }}
+                            className="bg-white/80 dark:bg-black/50 p-5 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30_rgba(59,130,246,0.15)] hover:border-blue-400/50 sm:col-span-2"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                            <p className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-200 leading-relaxed mb-4 relative z-10">
+                                &ldquo;Our commitment to academic excellence is reflected in our digital transformation journey with Aurora Hub, simplifying student engagement.&rdquo;
+                            </p>
+                            <div className="flex items-center">
+                                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3 text-blue-600 dark:text-blue-400 font-bold shrink-0">
+                                    TM
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-gray-900 dark:text-gray-100">Dr. T. Malathi</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Director</p>
+                                </div>
+                            </div>
+                        </motion.div>
+
                         {/* Small Card 1 */}
                         <motion.div
                             initial={{ opacity: 0, x: 80 }}
@@ -88,7 +111,7 @@ function Testimonial() {
                             className="bg-white/80 dark:bg-black/50 p-5 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] hover:border-blue-400/50"
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                            <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-4 relative z-10">
+                            <p className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-200 leading-relaxed mb-4 relative z-10">
                                 &ldquo;Aurora Hub transforms how students and organizers collaborate. The platform makes event discovery, participation, and management effortless for the entire campus community.&rdquo;
                             </p>
                             <div className="flex items-center">
@@ -114,7 +137,7 @@ function Testimonial() {
                             className="bg-white/80 dark:bg-black/50 p-5 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] hover:border-blue-400/50"
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                            <p className="text-xs sm:text-sm text-gray-800 dark:text-gray-200 leading-relaxed mb-4 relative z-10">
+                            <p className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-200 leading-relaxed mb-4 relative z-10">
                                 &ldquo;Digital platforms like Aurora Hub help institutions manage academic and cultural activities efficiently while maintaining transparency and structured approvals.&rdquo;
                             </p>
                             <div className="flex items-center">

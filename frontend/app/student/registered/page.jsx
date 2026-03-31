@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
   BookMarked, MapPin, Clock, Eye, XCircle, Ticket, QrCode, Calendar,
-  CheckCircle2, X, Download,
+  CheckCircle2, X, Download, Image,
 } from 'lucide-react'
+import getSocket from '../../../lib/socket'
 
 function QRDisplay({ qrData, ticketId }) {
   const [show, setShow] = useState(false)
@@ -133,6 +134,27 @@ export default function RegisteredEventsPage() {
     return () => { ignore = true }
   }, [status, studentId])
 
+  // Real-time refresh
+  useEffect(() => {
+    const socket = getSocket()
+    if (!socket) return
+    const reload = (payload) => {
+      if (payload?.scope === 'student' || payload?.student_id === studentId) {
+        setLoading(true)
+        fetch(`/api/student/registrations?student_id=${encodeURIComponent(studentId)}`, { cache: 'no-store' })
+          .then(r => r.json())
+          .then(json => { setEvents(Array.isArray(json.items) ? json.items : []); setLoading(false) })
+          .catch(() => setLoading(false))
+      }
+    }
+    socket.on('dashboard:refresh', reload)
+    socket.on('registration:changed', reload)
+    return () => {
+      socket.off('dashboard:refresh', reload)
+      socket.off('registration:changed', reload)
+    }
+  }, [studentId])
+
   async function handleCancel(id) {
     if (!studentId) { setError('No active student session found.'); setCancelId(null); return }
     try {
@@ -211,6 +233,19 @@ export default function RegisteredEventsPage() {
               className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 hover:shadow-md transition-shadow"
             >
               <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                {/* Poster thumbnail */}
+                {event.poster ? (
+                  <img
+                    src={event.poster}
+                    alt={event.event_title || 'Event'}
+                    className="h-20 w-28 rounded-xl object-cover shrink-0 border border-slate-100"
+                    onError={(e) => { e.target.onerror = null; e.target.src = '/assets/seminar.png' }}
+                  />
+                ) : (
+                  <div className="h-20 w-28 rounded-xl shrink-0 bg-slate-100 flex items-center justify-center">
+                    <Image className="h-6 w-6 text-slate-300" />
+                  </div>
+                )}
                 {/* Event Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">

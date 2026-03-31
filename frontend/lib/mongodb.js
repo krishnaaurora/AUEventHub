@@ -15,18 +15,14 @@ let clientPromise
 if (!uri) {
   // Allow UI build/deploy even when database env vars are not configured.
   clientPromise = null
-} else if (process.env.NODE_ENV === 'development') {
-  // In development mode, use a global variable so that the value
-  // is preserved across module reloads caused by HMR (Hot Module Replacement).
+} else {
+  // In both dev and prod, use a global variable to preserve the connection
+  // across module reloads and hot updates. This is crucial for performance.
   if (!global._mongoClientPromise) {
     client = new MongoClient(uri, options)
     global._mongoClientPromise = client.connect()
   }
   clientPromise = global._mongoClientPromise
-} else {
-  // In production mode, it's best to not use a global variable.
-  client = new MongoClient(uri, options)
-  clientPromise = client.connect()
 }
 
 // Export a module-scoped MongoClient promise. By doing this in a

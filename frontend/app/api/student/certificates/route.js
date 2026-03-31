@@ -27,11 +27,27 @@ export async function GET(request) {
     const rows = result.rows
     const eventIds = [...new Set(rows.map((item) => item.event_id).filter(Boolean))]
     const eventsCollection = await getEventsCollection()
-    const eventDocs = eventIds.length > 0
-      ? await eventsCollection.find({ _id: { $in: eventIds } }).toArray()
-      : []
+
+    let eventDocs = []
+    if (eventIds.length > 0) {
+      const { ObjectId } = await import('mongodb')
+      const objectIds = []
+      const stringIds = []
+      for (const id of eventIds) {
+        if (ObjectId.isValid(id) && id.length === 24) {
+          objectIds.push(new ObjectId(id))
+          stringIds.push(id)
+        } else {
+          stringIds.push(id)
+        }
+      }
+      eventDocs = await eventsCollection.find({
+        $or: [{ _id: { $in: objectIds } }, { _id: { $in: stringIds } }]
+      }).toArray()
+    }
+
     const eventsById = Object.fromEntries(
-      eventDocs.map((event) => [String(event._id), { ...event, _id: String(event._id) }]),
+      eventDocs.map((event) => [String(event._id), event]),
     )
 
     const items = rows.map((item) => {
@@ -43,20 +59,28 @@ export async function GET(request) {
         certificate_url: item.certificate_url,
         issued_at: item.issued_at,
         event_title: event?.title || item.event_id,
-        organizer: event?.organizer || 'Organizer TBA',
-        date: event?.date || null,
+        organizer: event?.organizer || event?.organizer_name || 'Organizer TBA',
+        date: event?.start_date || event?.date || null,
         category: event?.category || 'General',
+        color: (event?.category || '').toLowerCase().includes('technical') ? 'indigo' 
+               : (event?.category || '').toLowerCase().includes('cultural') ? 'violet' 
+               : (event?.category || '').toLowerCase().includes('sports') ? 'emerald'
+               : (event?.category || '').toLowerCase().includes('workshop') ? 'amber'
+               : (event?.category || '').toLowerCase().includes('seminar') ? 'cyan' : 'rose',
+        type: 'Participation Certificate',
       }
     })
 
     return NextResponse.json({ items })
   } catch (error) {
+    console.error('[STUDENT CERT GET]', error)
     return NextResponse.json(
       { message: 'Failed to fetch certificates.', detail: error.message },
       { status: 500 },
     )
   }
 }
+
 
 export async function POST(request) {
   try {

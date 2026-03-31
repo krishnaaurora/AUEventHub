@@ -9,6 +9,7 @@ import {
 import { ensureStudentTransactionTables, getPool } from '../../_lib/pg'
 import { emitSocketEvent } from '../../../../server/socket'
 import { requireVCAccess } from '../_lib/auth'
+import redis from '../../../../lib/redis'
 
 export async function POST(request) {
   try {
@@ -83,32 +84,57 @@ export async function POST(request) {
 
     // Create notification for organizer
     const event = await eventsCollection.findOne(eventFilter)
-    if (event) {
-      const notificationMessage = action === 'approve'
+    const notificationMessage = event
+      ? action === 'approve'
         ? `Your event "${event.title}" has been approved by the Vice Chancellor and is now live!`
         : `Your event "${event.title}" has been rejected by the Vice Chancellor. Reason: ${rejectionReason}`
+      : null
 
-      await pool.query(`
-        INSERT INTO notifications (user_id, type, title, message, event_id, created_at)
-        VALUES ($1, $2, $3, $4, $5, NOW())
-      `, [
-        event.organizer_id,
-        action === 'approve' ? 'event_approved' : 'event_rejected',
-        action === 'approve' ? 'Event Approved!' : 'Event Rejected',
-        notificationMessage,
-        eventId
-      ])
+    if (event && notificationMessage) {
+      try {
+        await pool.query(`
+          INSERT INTO notifications (user_id, type, title, message, event_id, priority)
+          VALUES ($1, $2, $3, $4, $5, $6)
+        `, [
+          String(event.organizer_id || ''),
+          action === 'approve' ? 'event_approved' : 'event_rejected',
+          action === 'approve' ? 'Event Approved!' : 'Event Rejected',
+          notificationMessage,
+          String(eventId),
+          'high'
+        ])
+      } catch (pgError) {
+        console.error('[VC ACTION] PG Notification Error:', pgError.message)
+      }
 
-      await notificationsCollection.insertOne({
-        user_id: event.organizer_id || 'all',
-        role: 'organizer',
-        title: action === 'approve' ? 'Event Published' : 'Event Rejected',
-        message: notificationMessage,
-        type: action === 'approve' ? 'event_published' : 'event_rejected',
-        event_id: String(event._id),
-        is_read: false,
-        created_at: new Date().toISOString(),
-      })
+      try {
+        await notificationsCollection.insertOne({
+          user_id: String(event.organizer_id || 'all'),
+          role: 'organizer',
+          title: action === 'approve' ? 'Event Published' : 'Event Rejected',
+          message: notificationMessage,
+          type: action === 'approve' ? 'event_published' : 'event_rejected',
+          event_id: String(event._id),
+          is_read: false,
+          created_at: new Date().toISOString(),
+        })
+      } catch (mongoError) {
+        console.error('[VC ACTION] Mongo Notification Error:', mongoError.message)
+      }
+    }
+
+    // Invalidate Redis caches so students see the newly published event
+    try {
+      if (redis && redis.isReady) {
+        const keysToDelete = [
+          ...await redis.keys('events:vc:*'),
+          ...await redis.keys('events_student_*'),
+          ...await redis.keys('events_dean_*'),
+        ]
+        if (keysToDelete.length > 0) await redis.del(keysToDelete)
+      }
+    } catch (cacheErr) {
+      console.error('[VC ACTION] Cache invalidation error (non-critical):', cacheErr.message)
     }
 
     // Emit socket events for real-time updates
@@ -118,8 +144,8 @@ export async function POST(request) {
     emitSocketEvent('dashboard:refresh', { scope: 'registrar' }, 'role:registrar')
     emitSocketEvent('event:status:changed', { eventId, action }, 'role:all')
 
-    // Notify organizer
-    if (event?.organizer_id) {
+    // Notify organizer via socket
+    if (event?.organizer_id && notificationMessage) {
       emitSocketEvent('notification:new', {
         id: `vc_${action}_${eventId}`,
         type: action === 'approve' ? 'event_approved' : 'event_rejected',
@@ -136,7 +162,11 @@ export async function POST(request) {
       eventId
     })
   } catch (error) {
-    console.error('VC action error:', error)
-    return NextResponse.json({ message: 'Internal server error' }, { status: 500 })
+    console.error('[VC ACTION] 500 Error:', error)
+    return NextResponse.json({ 
+      message: 'Internal server error', 
+      detail: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 })
   }
 }
