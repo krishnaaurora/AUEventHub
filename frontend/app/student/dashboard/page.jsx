@@ -1,9 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useSession } from 'next-auth/react'
 import { motion } from 'framer-motion'
+import useSWR from 'swr'
+import { fetcher } from '../../../lib/fetcher'
 import {
   ArrowRight,
   CalendarDays,
@@ -60,168 +62,81 @@ function formatDate(dateValue, timeValue, event) {
 
 export default function StudentDashboardPage() {
   const { data: session, status } = useSession()
-  const [events, setEvents] = useState([])
-  const [recommendationIds, setRecommendationIds] = useState([])
-  const [trending, setTrending] = useState([])
-  const [registrations, setRegistrations] = useState([])
-  const [certificates, setCertificates] = useState([])
-  const [notifications, setNotifications] = useState([])
-  const [newEventCount, setNewEventCount] = useState(0)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const studentId = session?.user?.registrationId || session?.user?.id || ''
+  
+  const [isPending, startTransition] = useTransition()
+  const [newEventCount, setNewEventCount] = useState(0)
 
-  async function loadDashboardData(activeStudentId) {
-    if (!activeStudentId) {
-      setLoading(false)
-      return
-    }
+  // SWR Hooks for each data point
+  const { data: eventsData, error: eventsError, mutate: mutateEvents } = useSWR(
+    status === 'authenticated' ? '/api/student/events?status=approved&limit=100' : null,
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 10000, suspense: false }
+  )
+  
+  const { data: recoData } = useSWR(
+    status === 'authenticated' && studentId ? `/api/student/ai-recommendations?student_id=${encodeURIComponent(studentId)}` : null,
+    fetcher
+  )
 
-    // ─── Instant Cache Recovery ──────────────────────────────────────────────
-    // Load from localStorage immediately so the UI is never empty.
-    try {
-      const cached = localStorage.getItem(`dashboard_cache_${activeStudentId}`)
-      if (cached) {
-        const data = JSON.parse(cached)
-        setEvents(data.events || [])
-        setRecommendationIds(data.recommendationIds || [])
-        setTrending(data.trending || [])
-        setRegistrations(data.registrations || [])
-        setCertificates(data.certificates || [])
-        setNotifications(data.notifications || [])
-        setLoading(false) // Data is ready from cache
-      }
-    } catch (e) { /* ignore */ }
+  const { data: trendingData } = useSWR(
+    status === 'authenticated' ? '/api/student/event-trending?limit=6' : null,
+    fetcher
+  )
 
-    setLoading(true) // Background refresh
-    setError('')
+  const { data: registrationsData, mutate: mutateRegistrations } = useSWR(
+    status === 'authenticated' && studentId ? `/api/student/registrations?student_id=${encodeURIComponent(studentId)}` : null,
+    fetcher
+  )
 
-    try {
-      const [eventsRes, recommendationRes, trendingRes, registrationsRes, certificatesRes, notificationsRes] = await Promise.all([
-        fetch('/api/student/events?status=approved&limit=100', { cache: 'no-store' }),
-        fetch(`/api/student/ai-recommendations?student_id=${encodeURIComponent(activeStudentId)}`, {
-          cache: 'no-store',
-        }),
-        fetch('/api/student/event-trending?limit=6', { cache: 'no-store' }),
-        fetch(`/api/student/registrations?student_id=${encodeURIComponent(activeStudentId)}`, { cache: 'no-store' }),
-        fetch(`/api/student/certificates?student_id=${encodeURIComponent(activeStudentId)}`, { cache: 'no-store' }),
-        fetch(`/api/student/notifications?user_id=${encodeURIComponent(activeStudentId)}`, { cache: 'no-store' }),
-      ])
+  const { data: certificatesData, mutate: mutateCertificates } = useSWR(
+    status === 'authenticated' && studentId ? `/api/student/certificates?student_id=${encodeURIComponent(studentId)}` : null,
+    fetcher
+  )
 
-      const eventsJson = await eventsRes.json()
-      const recommendationJson = await recommendationRes.json()
-      const trendingJson = await trendingRes.json()
-      const registrationsJson = await registrationsRes.json()
-      const certificatesJson = await certificatesRes.json()
-      const notificationsJson = await notificationsRes.json()
+  const { data: notificationsData, mutate: mutateNotifications } = useSWR(
+    status === 'authenticated' && studentId ? `/api/student/notifications?user_id=${encodeURIComponent(studentId)}` : null,
+    fetcher
+  )
 
-      const nextData = {
-        events: Array.isArray(eventsJson.items) ? eventsJson.items : [],
-        recommendationIds: Array.isArray(recommendationJson.recommended_events) ? recommendationJson.recommended_events : [],
-        trending: Array.isArray(trendingJson.items) ? trendingJson.items : [],
-        registrations: Array.isArray(registrationsJson.items) ? registrationsJson.items : [],
-        certificates: Array.isArray(certificatesJson.items) ? certificatesJson.items : [],
-        notifications: Array.isArray(notificationsJson.items) ? notificationsJson.items : [],
-      }
-
-      setEvents(nextData.events)
-      setRecommendationIds(nextData.recommendationIds)
-      setTrending(nextData.trending)
-      setRegistrations(nextData.registrations)
-      setCertificates(nextData.certificates)
-      setNotifications(nextData.notifications)
-
-      // ─── Update Cache ──────────────────────────────────────────────────────
-      localStorage.setItem(`dashboard_cache_${activeStudentId}`, JSON.stringify(nextData))
-    } catch (err) {
-      setError('Unable to refresh dashboard. Showing cached data.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const events = eventsData?.items || []
+  const recommendationIds = recoData?.recommended_events || []
+  const trending = trendingData?.items || []
+  const registrations = registrationsData?.items || []
+  const certificates = certificatesData?.items || []
+  const notifications = notificationsData?.items || []
 
   useEffect(() => {
-    if (status === 'loading') {
-      return undefined
-    }
-
-    loadDashboardData(studentId)
-
-    if (!studentId) {
-      return undefined
-    }
+    if (status !== 'authenticated' || !studentId) return
 
     const socket = getSocket()
-    if (!socket) {
-      return undefined
-    }
+    if (!socket) return
 
     socket.emit('join:user', studentId)
 
     const refreshHandlers = {
       registrationChanged: (payload) => {
         if (String(payload?.student_id || '') === String(studentId)) {
-          setRegistrations((prev) => {
-            if (payload?.type === 'deleted') {
-              return prev.filter((item) => item.id !== payload.registration_id && String(item.event_id) !== String(payload.event_id))
-            }
-
-            const registration = payload?.registration
-            if (!registration) {
-              return prev
-            }
-
-            const nextItem = {
-              id: registration.id,
-              student_id: registration.student_id,
-              event_id: registration.event_id,
-              ticket_id: registration.ticket_id,
-              registered_at: registration.registered_at,
-              event_title: payload?.event_title || registration.event_id,
-              venue: payload?.venue || 'Venue TBA',
-              organizer: payload?.organizer || 'Organizer TBA',
-              date: payload?.date || null,
-              time: payload?.time || null,
-              status: 'Confirmed',
-            }
-
-            return [nextItem, ...prev.filter((item) => item.id !== nextItem.id)]
-          })
+          mutateRegistrations()
         }
       },
       notificationNew: (payload) => {
         if (String(payload?.user_id || '') === String(studentId)) {
-          setNotifications((prev) => [payload, ...prev.filter((item) => item.id !== payload.id)])
+          mutateNotifications()
         }
       },
       certificateUpdated: (payload) => {
         if (String(payload?.student_id || '') === String(studentId)) {
-          setCertificates((prev) => [payload, ...prev.filter((item) => item.id !== payload.id)])
+          mutateCertificates()
         }
       },
       aiRecommendationsUpdated: (payload) => {
         if (String(payload?.student_id || '') === String(studentId)) {
-          setRecommendationIds(Array.isArray(payload?.recommended_events) ? payload.recommended_events : [])
+          // Re-fetch recommendations implicitly or manually
         }
-      },
-      trendingUpdated: (payload) => {
-        const eventId = String(payload?.event_id || '')
-        if (!eventId) {
-          return
-        }
-
-        setTrending((prev) => {
-          const next = [payload, ...prev.filter((item) => String(item.event_id) !== eventId)]
-          return next.sort((a, b) => Number(b.score || 0) - Number(a.score || 0)).slice(0, 6)
-        })
       },
       eventNew: (payload) => {
-        setEvents((prev) => {
-          if (prev.some((item) => String(item._id) === String(payload?._id))) {
-            return prev
-          }
-          return [payload, ...prev]
-        })
+        mutateEvents()
         setNewEventCount((prev) => prev + 1)
       },
       dashboardRefresh: (payload) => {
@@ -229,7 +144,9 @@ export default function StudentDashboardPage() {
           (String(payload?.studentId || '') === String(studentId) && payload?.type === 'certificates-sync') ||
           payload?.type === 'bulk-sync'
         )) {
-          loadDashboardData(studentId)
+          mutateEvents()
+          mutateRegistrations()
+          mutateCertificates()
         }
       },
     }
@@ -238,7 +155,6 @@ export default function StudentDashboardPage() {
     socket.on('notification:new', refreshHandlers.notificationNew)
     socket.on('certificate:updated', refreshHandlers.certificateUpdated)
     socket.on('ai-recommendations:updated', refreshHandlers.aiRecommendationsUpdated)
-    socket.on('event-trending:updated', refreshHandlers.trendingUpdated)
     socket.on('event:new', refreshHandlers.eventNew)
     socket.on('dashboard:refresh', refreshHandlers.dashboardRefresh)
 
@@ -247,11 +163,10 @@ export default function StudentDashboardPage() {
       socket.off('notification:new', refreshHandlers.notificationNew)
       socket.off('certificate:updated', refreshHandlers.certificateUpdated)
       socket.off('ai-recommendations:updated', refreshHandlers.aiRecommendationsUpdated)
-      socket.off('event-trending:updated', refreshHandlers.trendingUpdated)
       socket.off('event:new', refreshHandlers.eventNew)
       socket.off('dashboard:refresh', refreshHandlers.dashboardRefresh)
     }
-  }, [status, studentId])
+  }, [status, studentId, mutateEvents, mutateRegistrations, mutateCertificates, mutateNotifications])
 
   const eventTitleById = useMemo(
     () => Object.fromEntries(events.map((event) => [String(event._id), event.title])),
@@ -285,6 +200,8 @@ export default function StudentDashboardPage() {
     }
   }, [events, recommendationIds])
 
+  const isLoading = status === 'loading' || (!eventsData && !eventsError)
+
   return (
     <div className="space-y-6 p-6 xl:p-8">
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -317,13 +234,6 @@ export default function StudentDashboardPage() {
         </div>
       </section>
 
-      {error && (
-        <section className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
-          {error}
-        </section>
-      )}
-
-      {/* Live Check-in Section */}
       <section className="grid gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2 rounded-3xl border border-slate-900 bg-slate-900 p-8 shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-indigo-500/20 transition-all duration-700" />
@@ -338,7 +248,7 @@ export default function StudentDashboardPage() {
               </div>
             </div>
 
-            <CheckInForm registrations={registrations} studentId={studentId} onCheckedIn={() => loadDashboardData(studentId)} />
+            <CheckInForm registrations={registrations} studentId={studentId} onCheckedIn={() => { mutateRegistrations(); mutateCertificates(); }} />
           </div>
         </div>
 
@@ -358,12 +268,12 @@ export default function StudentDashboardPage() {
         </div>
       </section>
 
-      {loading ? (
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm">
-          Loading dashboard data...
+      {isLoading ? (
+        <section className="rounded-3xl border border-slate-200 bg-white p-8 text-sm text-slate-500 shadow-sm flex items-center gap-3">
+          <div className="h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          Optimizing dashboard feed...
         </section>
       ) : (
-
         <div className="grid gap-6 xl:grid-cols-2">
           <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
@@ -477,10 +387,10 @@ export default function StudentDashboardPage() {
   )
 }
 
-// ─── Attendance Check-in Form ─────────────────────────────────────────────
 function CheckInForm({ registrations, studentId, onCheckedIn }) {
   const [selectedEventId, setSelectedEventId] = useState('')
   const [code, setCode] = useState('')
+  const [isPending, startTransition] = useTransition()
   const [status, setStatus] = useState('idle') // idle, loading, success, error
   const [message, setMessage] = useState('')
 
@@ -493,25 +403,28 @@ function CheckInForm({ registrations, studentId, onCheckedIn }) {
   async function handleCheckIn() {
     if (!selectedEventId || code.length !== 4) return
     setStatus('loading')
-    try {
-      const res = await fetch('/api/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId, eventId: selectedEventId, code }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setStatus('success')
-        setMessage(data.message)
-        if (onCheckedIn) onCheckedIn()
-      } else {
+    
+    startTransition(async () => {
+      try {
+        const res = await fetch('/api/attendance', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId, eventId: selectedEventId, code }),
+        })
+        const data = await res.json()
+        if (res.ok) {
+          setStatus('success')
+          setMessage(data.message)
+          if (onCheckedIn) onCheckedIn()
+        } else {
+          setStatus('error')
+          setMessage(data.message || 'Verification failed')
+        }
+      } catch {
         setStatus('error')
-        setMessage(data.message || 'Verification failed')
+        setMessage('Network error while checking in')
       }
-    } catch {
-      setStatus('error')
-      setMessage('Network error while checking in')
-    }
+    })
   }
 
   if (status === 'success') {
@@ -572,11 +485,11 @@ function CheckInForm({ registrations, studentId, onCheckedIn }) {
 
       <button 
         onClick={handleCheckIn}
-        disabled={status === 'loading' || code.length !== 4 || !selectedEventId}
+        disabled={status === 'loading' || isPending || code.length !== 4 || !selectedEventId}
         className="w-full rounded-xl bg-indigo-600 px-6 py-4 text-sm font-black text-white hover:bg-indigo-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xl shadow-indigo-900/40 flex items-center justify-center gap-2"
       >
-        {status === 'loading' ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-        {status === 'loading' ? 'Verifying...' : 'Validate & Mark Attendance'}
+        {status === 'loading' || isPending ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+        {status === 'loading' || isPending ? 'Optimizing...' : 'Validate & Mark Attendance'}
       </button>
 
       <p className="text-[10px] text-slate-600 text-center font-bold italic">
@@ -585,4 +498,3 @@ function CheckInForm({ registrations, studentId, onCheckedIn }) {
     </div>
   )
 }
-

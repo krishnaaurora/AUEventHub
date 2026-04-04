@@ -39,12 +39,22 @@ export default function RegistrarLayout({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'loading') return
     if (!session || session.user?.role !== 'registrar') { router.push('/login'); return }
     loadNotifications()
   }, [session, status, router])
+
+  // Detect chat panel state
+  useEffect(() => {
+    const check = () => setIsChatPanelOpen(document.body.classList.contains('chat-panel-open'))
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const socket = getSocket()
@@ -93,8 +103,9 @@ export default function RegistrarLayout({ children }) {
           <div className="flex h-16 items-center justify-between px-4 border-b border-slate-200">
             <div className="flex items-center gap-2 min-w-0">
               <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="h-8 w-8 shrink-0 rounded-lg bg-emerald-500 flex items-center justify-center hover:opacity-90"
+                onClick={() => !isChatPanelOpen && setIsCollapsed(!isCollapsed)}
+                disabled={isChatPanelOpen}
+                className={`h-8 w-8 shrink-0 rounded-lg bg-emerald-500 flex items-center justify-center transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
               >
                 <Building2 className="h-5 w-5 text-white" />
               </button>
@@ -102,12 +113,12 @@ export default function RegistrarLayout({ children }) {
             </div>
             <div className="flex items-center gap-1">
               {!isCollapsed && (
-                <button onClick={() => setIsCollapsed(true)} className="hidden lg:flex h-7 w-7 items-center justify-center rounded hover:bg-slate-100 text-slate-400">
+                <button onClick={() => !isChatPanelOpen && setIsCollapsed(true)} disabled={isChatPanelOpen} className={`hidden lg:flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100'}`}>
                   <ChevronsLeft className="h-4 w-4" />
                 </button>
               )}
               {isCollapsed && (
-                <button onClick={() => setIsCollapsed(false)} className="hidden lg:flex h-7 w-7 items-center justify-center rounded hover:bg-slate-100 text-slate-400">
+                <button onClick={() => !isChatPanelOpen && setIsCollapsed(false)} disabled={isChatPanelOpen} className={`hidden lg:flex h-7 w-7 items-center justify-center rounded text-slate-400 transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-100'}`}>
                   <ChevronsRight className="h-4 w-4" />
                 </button>
               )}

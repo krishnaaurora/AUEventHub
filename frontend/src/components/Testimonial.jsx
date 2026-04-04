@@ -1,20 +1,52 @@
 "use client";
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 
 function Testimonial() {
+    const sectionRef = useRef(null);
+    const { scrollYProgress } = useScroll({
+        target: sectionRef,
+        offset: ["start end", "end start"]
+    });
+
+    const y1 = useTransform(scrollYProgress, [0, 1], [0, -100]);
+    const y2 = useTransform(scrollYProgress, [0, 1], [0, 100]);
+    const yCards = useTransform(scrollYProgress, [0, 1], [50, -50]);
+    const rotate = useTransform(scrollYProgress, [0, 1], [0, 45]);
+
     return (
-        <div className="font-sans flex flex-col items-center py-16 px-4 sm:px-6 lg:px-8 bg-white text-gray-900 dark:bg-black dark:text-white">
+        <div ref={sectionRef} className="font-sans flex flex-col items-center py-24 px-4 sm:px-6 lg:px-8 bg-white text-gray-900 dark:bg-black dark:text-white relative overflow-hidden">
+            {/* Background Parallax Elements */}
+            <motion.div 
+                style={{ y: y1, rotate }}
+                className="absolute top-1/4 -left-10 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"
+            />
+            <motion.div 
+                style={{ y: y2, rotate: -rotate }}
+                className="absolute bottom-1/4 -right-10 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none"
+            />
+
             {/* Main Heading */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-center max-w-4xl leading-tight mb-4">
+            <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-4xl sm:text-5xl lg:text-7xl font-bold text-center max-w-4xl leading-tight mb-4 relative z-10"
+            >
                 From Our Leadership Team
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 text-center max-w-3xl mb-14 px-4">
+            </motion.h1>
+            <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 text-center max-w-3xl mb-20 px-4 relative z-10"
+            >
                 Empowering campus innovation through streamlined event management.
-            </p>
+            </motion.p>
 
             {/* Testimonial Cards Container */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full max-w-6xl">
+            <motion.div style={{ y: yCards }} className="grid grid-cols-1 lg:grid-cols-2 gap-4 w-full max-w-6xl relative z-10">
                 {/* Large Left Card */}
                 <motion.div
                     initial={{ opacity: 0, x: -80 }}
@@ -38,13 +70,13 @@ function Testimonial() {
                     <div className="flex items-center">
                         <img
                             src="https://i.pinimg.com/736x/6f/a3/6a/6fa36aa2c367da06b2a4c8ae1cf9ee02.jpg"
-                            alt="Vemmula Pranay"
+                            alt="DR V Harsha Shastri"
                             className="w-12 h-12 rounded-full object-cover mr-4"
-                            onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/48x48/6B7280/FFFFFF?text=VP" }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = "https://placehold.co/48x48/6B7280/FFFFFF?text=VHS" }}
                         />
                         <div>
-                            <p className="font-semibold text-gray-900 dark:text-gray-100">Vemmula Pranay</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Convener</p>
+                            <p className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">DR V Harsha Shastri</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Convener</p>
                         </div>
                     </div>
                 </motion.div>
@@ -155,7 +187,7 @@ function Testimonial() {
                         </motion.div>
                     </div>
                 </div>
-            </div >
+            </motion.div >
         </div >
     );
 }

@@ -40,12 +40,22 @@ function VCLayout({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') { router.push('/login'); return }
     if (status === 'authenticated' && session?.user?.role !== 'vc') { router.push('/login'); return }
     if (status === 'authenticated') loadNotifications()
   }, [session, status, router])
+
+  // Detect chat panel state
+  useEffect(() => {
+    const check = () => setIsChatPanelOpen(document.body.classList.contains('chat-panel-open'))
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -94,20 +104,21 @@ function VCLayout({ children }) {
           {/* Logo */}
           <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} h-16 px-4 bg-emerald-600`}>
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              onClick={() => !isChatPanelOpen && setIsCollapsed(!isCollapsed)}
+              disabled={isChatPanelOpen}
+              className={`flex items-center gap-2 transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80'}`}
             >
               <Building2 className="h-8 w-8 text-white shrink-0" />
               {!isCollapsed && <span className="ml-1 text-xl font-bold text-white">Aurora Hub</span>}
             </button>
             <div className="flex items-center gap-1">
               {!isCollapsed && (
-                <button onClick={() => setIsCollapsed(true)} className="hidden lg:flex h-7 w-7 items-center justify-center rounded text-emerald-200 hover:text-white">
+                <button onClick={() => !isChatPanelOpen && setIsCollapsed(true)} disabled={isChatPanelOpen} className={`hidden lg:flex h-7 w-7 items-center justify-center rounded text-emerald-200 transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:text-white'}`}>
                   <ChevronsLeft className="h-4 w-4" />
                 </button>
               )}
               {isCollapsed && (
-                <button onClick={() => setIsCollapsed(false)} className="hidden lg:flex h-7 w-7 items-center justify-center rounded text-emerald-200 hover:text-white">
+                <button onClick={() => !isChatPanelOpen && setIsCollapsed(false)} disabled={isChatPanelOpen} className={`hidden lg:flex h-7 w-7 items-center justify-center rounded text-emerald-200 transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:text-white'}`}>
                   <ChevronsRight className="h-4 w-4" />
                 </button>
               )}

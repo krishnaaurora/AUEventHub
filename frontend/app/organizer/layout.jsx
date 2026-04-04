@@ -117,6 +117,8 @@ export default function OrganizerLayout({ children }) {
   }, []);
 
   const shouldShowTooltip = isCollapsed || isChatPanelOpen;
+  // When chatbot is open, behave as if fully collapsed (icon-only rail)
+  const effectivelyCollapsed = isCollapsed || isChatPanelOpen;
 
   return (
     <div className="min-h-screen bg-[#F0F4FA] text-slate-900">
@@ -133,7 +135,7 @@ export default function OrganizerLayout({ children }) {
       <aside
         className={`
           fixed inset-y-0 left-0 z-50 h-screen max-h-screen overscroll-none
-          flex flex-col ${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200/70 shadow-xl lg:shadow-none
+          flex flex-col ${effectivelyCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-slate-200/70 shadow-xl lg:shadow-none
           transition-all duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
@@ -141,12 +143,13 @@ export default function OrganizerLayout({ children }) {
         <div className="flex-shrink-0 flex items-center justify-between px-4 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md hover:opacity-90 transition-opacity"
+              onClick={() => !isChatPanelOpen && setIsCollapsed(!isCollapsed)}
+              disabled={isChatPanelOpen}
+              className={`h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
             >
               <Zap className="h-5 w-5 text-white" />
             </button>
-            {!isCollapsed && (
+            {!effectivelyCollapsed && (
               <div className="overflow-hidden">
                 <p className="text-base font-bold tracking-tight text-slate-900 truncate">Aurora Hub</p>
                 <p className="text-[10px] text-slate-400 font-medium">Organizer Portal</p>
@@ -154,12 +157,12 @@ export default function OrganizerLayout({ children }) {
             )}
           </div>
           <div className="flex items-center gap-1">
-            {!isCollapsed && (
+            {!effectivelyCollapsed && (
               <button onClick={() => setIsCollapsed(true)} className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">
                 <ChevronsLeft className="h-4 w-4" />
               </button>
             )}
-            {isCollapsed && (
+            {effectivelyCollapsed && !isChatPanelOpen && (
               <button onClick={() => setIsCollapsed(false)} className="hidden lg:flex h-7 w-7 items-center justify-center rounded-lg hover:bg-slate-100 text-slate-400">
                 <ChevronsRight className="h-4 w-4" />
               </button>
@@ -182,7 +185,7 @@ export default function OrganizerLayout({ children }) {
                 <Link href={item.href} onClick={() => setSidebarOpen(false)} className="w-full">
                   <span
                     className={`
-                      flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
+                      flex items-center ${effectivelyCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
                       ${active
                         ? 'bg-indigo-50 text-indigo-700'
                         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}
@@ -193,8 +196,8 @@ export default function OrganizerLayout({ children }) {
                     <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}`}>
                       <Icon className="h-4 w-4" />
                     </span>
-                    {!isCollapsed && item.label}
-                    {!isCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
+                    {!effectivelyCollapsed && item.label}
+                    {!effectivelyCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
                   </span>
                 </Link>
               </SidebarTooltip>
@@ -207,19 +210,19 @@ export default function OrganizerLayout({ children }) {
             <SidebarTooltip label="Logout" isVisible={shouldShowTooltip}>
               <button
                 onClick={handleLogout}
-                className={`w-full flex items-center ${isCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 transition-colors`}
-                title={isCollapsed ? 'Logout' : undefined}
+                className={`w-full flex items-center ${effectivelyCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50 transition-colors`}
+                title={effectivelyCollapsed ? 'Logout' : undefined}
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-50">
                   <LogOut className="h-4 w-4 text-rose-500" />
                 </span>
-                {!isCollapsed && 'Logout'}
+                {!effectivelyCollapsed && 'Logout'}
               </button>
             </SidebarTooltip>
           </div>
       </aside>
 
-      <div className={`transition-all duration-300 ${isCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col min-h-screen`}>
+      <div className={`transition-all duration-300 ${effectivelyCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col min-h-screen`}>
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200/70 shadow-sm flex-shrink-0">
           <div className="flex items-center gap-4 px-6 py-3.5">
             <button onClick={() => setSidebarOpen(true)} className="lg:hidden rounded-xl p-2 text-slate-500 hover:bg-slate-100">

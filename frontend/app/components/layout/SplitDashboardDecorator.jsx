@@ -2,7 +2,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { MessageCircle, X, Sparkles } from 'lucide-react';
-import FloatingChat from '../FloatingChat';
+import dynamic from 'next/dynamic';
+const FloatingChat = dynamic(() => import('../FloatingChat'), { 
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full items-center justify-center bg-gray-50/50">
+      <div className="animate-pulse text-indigo-500 font-medium">Loading Assistant...</div>
+    </div>
+  )
+});
 
 export default function SplitDashboardDecorator({ children }) {
     const pathname = usePathname();
@@ -65,10 +73,11 @@ export default function SplitDashboardDecorator({ children }) {
     return (
         <div
             ref={containerRef}
-            className={`w-full min-h-screen bg-white m-0 p-0 ${isOpen ? 'flex overflow-visible' : 'relative'} ${isResizing ? 'select-none' : ''}`}
+            className={`w-full min-h-screen bg-white m-0 p-0 ${isOpen ? 'flex overflow-hidden' : 'relative'} ${isResizing ? 'select-none' : ''}`}
+            style={isOpen ? { paddingRight: `${sidebarWidth}px` } : {}}
         >
             {/* 1. MAIN CONTENT AREA */}
-            <div className={`min-w-0 bg-white relative ${isOpen ? 'flex-1 flex flex-col overflow-visible' : 'w-full'}`}>
+            <div className={`main-content-flow bg-white relative transition-all duration-300 ${isOpen ? 'flex flex-col' : 'w-full'}`}>
                 {children}
 
                 {/* Floating Toggle Button (Only when closed) */}
@@ -82,23 +91,23 @@ export default function SplitDashboardDecorator({ children }) {
                 )}
             </div>
 
-            {/* 2. RESIZABLE ASSISTANT (Flex Child - Zero Spacing) */}
+            {/* 2. RESIZABLE ASSISTANT */}
             {isOpen && (
                 <>
                     <div
                         onMouseDown={handleMouseDown}
                         className={`
-                            w-[2px] h-screen cursor-col-resize hover:bg-indigo-500/50 transition-all z-[70] shrink-0
+                            w-[2px] h-screen cursor-col-resize hover:bg-indigo-500/50 transition-all z-[45] shrink-0
                             ${isResizing ? 'bg-indigo-600' : 'bg-gray-200'}
                         `}
                     />
                     <aside
                         style={{ width: `${sidebarWidth}px` }}
-                        className="h-screen bg-white flex flex-col border-l border-gray-200 z-[70] shrink-0 overflow-hidden"
+                        className="chat-panel-container bg-white flex flex-col border-l border-gray-200 shrink-0 overflow-hidden"
                     >
                         <div
                             style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                            className="p-4 bg-indigo-600 text-white flex items-center justify-between"
+                            className="p-4 bg-indigo-600 text-white flex items-center justify-between shadow-md relative z-10"
                         >
                             <div className="flex items-center gap-2">
                                 <Sparkles className="h-4 w-4 text-indigo-200" />
@@ -111,7 +120,7 @@ export default function SplitDashboardDecorator({ children }) {
                                 <X className="h-4 w-4" />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-hidden">
+                        <div className="flex-1 overflow-hidden relative">
                             <FloatingChat isEmbedded={true} />
                         </div>
                     </aside>
@@ -119,65 +128,34 @@ export default function SplitDashboardDecorator({ children }) {
             )}
 
             <style jsx global>{`
-                /* ── ZEN SCROLLING (Invisible Scrollbars, Normal Scrolling) ── */
-                * {
-                    scrollbar-width: none !important;
-                    -ms-overflow-style: none !important;
+                /* ── ZEN SCROLLING ── */
+                * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+                *::-webkit-scrollbar { display: none !important; }
+
+                /* ── CHAT PANEL - FIXED ASIDE ── */
+                aside.chat-panel-container {
+                    position: fixed !important;
+                    top: 0 !important; right: 0 !important; bottom: 0 !important;
+                    height: 100vh !important;
+                    z-index: 50;
+                    background: #ffffff;
+                    overflow: hidden !important;
+                    border-left: 1px solid #e5e7eb;
+                    display: flex;
+                    flex-direction: column;
                 }
-                *::-webkit-scrollbar {
-                    display: none !important;
-                    width: 0 !important;
-                    height: 0 !important;
+                aside.chat-panel-container > div:last-child {
+                    flex: 1; overflow-y: auto; overflow-x: hidden;
                 }
 
-                /* ── CHAT OPEN LAYOUT FIXES ── */
-                /* Force Original Sidebar to 72px */
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] {
-                    width: 72px !important;
-                    overflow: visible !important; /* Allow Tooltips to overflow */
-                }
+                /* ── MAIN CONTENT ── */
+                .main-content-flow { flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; }
 
-                /* Pull the Main Content left to match the 72px sidebar */
-                .chat-panel-open div[class*="lg:ml-64"],
-                .chat-panel-open div[class*="lg:ml-20"] {
-                    margin-left: 72px !important;
-                    transition: margin-left 0.3s ease !important;
-                }
-
-                /* Suppress Text inside the 72px collapsed Sidebar */
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] span {
-                    font-size: 0 !important;
-                    opacity: 0 !important;
-                    display: none !important;
-                }
-
-                /* Keep Icons and Tooltips visible */
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] svg,
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] .sidebar-tooltip-content span,
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] .sidebar-tooltip-content {
-                    font-size: 14px !important;
+                /* ── Tooltip on hover in collapsed sidebar ── */
+                body.chat-panel-open aside[class*="fixed"][class*="left-0"] .group:hover > [class*="absolute"] {
                     opacity: 1 !important;
-                    display: flex !important;
-                }
-
-                /* Ensure the tooltip wrapper itself does not get hidden */
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] .group {
-                    display: flex !important;
-                }
-
-                /* Center Navigation Buttons in 72px Space */
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] nav a > span,
-                .chat-panel-open aside[class*="fixed"][class*="left-0"] button {
-                    justify-content: center !important;
-                    padding-left: 0 !important;
-                    padding-right: 0 !important;
-                }
-
-                /* Keep Chat panel sticky to top of viewport even if user scrolls */
-                .chat-panel-open aside[class*="border-l"] {
-                    position: sticky !important;
-                    top: 0;
-                    height: 100vh;
+                    visibility: visible !important;
+                    pointer-events: auto !important;
                 }
             `}</style>
         </div>

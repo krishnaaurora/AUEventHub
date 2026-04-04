@@ -23,16 +23,100 @@ export async function POST(request) {
       )
     }
 
-    const dateStr = endDate && endDate !== startDate
-      ? `${startDate} to ${endDate}`
-      : startDate
-    const timeStr = endTime && endTime !== startTime
-      ? `${startTime} to ${endTime}`
-      : startTime || 'TBD'
+    const apiKey = process.env.GROK_API_KEY
+    const geminiKey = process.env.GEMINI_API_KEY
+
+    const prompt = `Draft a formal, professional university event approval request letter addressed to the Dean of Student Affairs, Aurora University.
+Event details:
+Title: ${title}
+Category: ${category}
+Department: ${department || 'General'}
+Venue: ${venue}
+Schedule: ${startDate} ${startTime} - ${endDate || startDate} ${endTime}
+Organizer: ${organizer || 'Event Organizer'}
+Expected Participants: ${maxParticipants}
+Guest Speakers: ${guestSpeakers}
+Abstract: ${description || 'N/A'}
+
+Instructions: 
+- Stay professional and convincing. 
+- Do NOT use repetitive words. 
+- Each letter should be a unique creation starting with a formal header. 
+- Focus and highlight the importance of "${title}" for students.`
+
+    // Try Gemini Primary
+    if (geminiKey) {
+      try {
+        console.log('DEBUG: Letter Gemini generation...')
+        const geminiRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.9, maxOutputTokens: 1000 }
+            })
+          }
+        )
+
+        if (geminiRes.ok) {
+          const json = await geminiRes.json()
+          const letter = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+          if (letter) {
+            console.log('DEBUG: Letter Gemini Success!')
+            return NextResponse.json({ letter, source: 'gemini' })
+          }
+        }
+      } catch (err) {
+        console.error('DEBUG: Letter Gemini Error:', err)
+      }
+    }
+
+    // Try Grok Backup
+    if (apiKey) {
+      console.log('DEBUG: Letter Grok starting with:', apiKey.substring(0, 8))
+      try {
+        const grokRes = await fetch('https://api.x.ai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: "grok-beta",
+            messages: [
+              {
+                role: "system",
+                content: "You are a senior university administrative assistant. Write formal, convincing, and highly UNIQUE approval letters. Do not use repetitive templates."
+              },
+              {
+                role: "user",
+                content: prompt
+              }
+            ],
+            temperature: 0.92
+          })
+        })
+
+        if (grokRes.ok) {
+          const json = await grokRes.json()
+          const content = json.choices[0].message.content
+          if (content) {
+            return NextResponse.json({ letter: content, source: 'grok' })
+          }
+        }
+      } catch (err) {
+        console.error('DEBUG: Letter Grok Connection Error:', err)
+      }
+    }
+
+    // Fallback template
+    const dateStr = endDate && endDate !== startDate ? `${startDate} to ${endDate}` : startDate
+    const timeStr = endTime && endTime !== startTime ? `${startTime} to ${endTime}` : startTime || 'TBD'
     const today = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
 
     const letter = `APPROVAL REQUEST LETTER
-
 Date: ${today}
 
 To,
@@ -42,33 +126,24 @@ Aurora University
 Subject: Request for Approval to Conduct "${title}"
 
 Respected Sir/Madam,
+I, ${organizer || '[Organizer]'}, am writing to formally request approval to organize "${title}" under the ${category} category${department ? ` for ${department}` : ''}.
 
-I, ${organizer || '[Organizer Name]'}, am writing to formally request approval to organize the event titled "${title}" under the ${category} category${department ? ` for the ${department} department` : ''}.
-
-Event Details:
-- Event Title: ${title}
-- Category: ${category}${department ? `\n- Department: ${department}` : ''}
+Details:
 - Venue: ${venue}
-- Date: ${dateStr}
-- Time: ${timeStr}
-- Expected Participants: ${maxParticipants}
-- Guest Speakers: ${guestSpeakers}
+- Schedule: ${dateStr} (${timeStr})
+- Speakers: ${guestSpeakers}
+- Expected Seats: ${maxParticipants}
 
-Event Description:
-${description || 'A comprehensive event aimed at enhancing student engagement and practical learning opportunities.'}
+Description:
+${description || 'Enhancing student engagement and practical learning.'}
 
-I kindly request your approval to proceed with the preparations for this event. All necessary arrangements for venue setup, safety protocols, and logistics will be managed by the organizing committee.
-
-I assure you that the event will be conducted in an orderly manner and in compliance with all university guidelines and regulations.
-
-Thank you for your time and consideration. I look forward to your favorable response.
+I request your approval to proceed with the preparations. All necessary arrangements will be managed by the organizing committee in compliance with university guidelines.
 
 Yours sincerely,
 ${organizer || '[Organizer Name]'}
-Event Organizer
-Aurora University`
+Event Organizer`
 
-    return NextResponse.json({ letter })
+    return NextResponse.json({ letter, source: 'fallback' })
   } catch (error) {
     return NextResponse.json(
       { message: 'Failed to generate approval letter.', detail: error.message },

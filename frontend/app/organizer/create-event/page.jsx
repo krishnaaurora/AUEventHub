@@ -1,9 +1,9 @@
-'use client'
+﻿'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays,
   Clock,
@@ -77,6 +77,14 @@ export default function CreateEventPage() {
   const [clashResult, setClashResult] = useState(null)
   const [letterLoading, setLetterLoading] = useState(false)
   const [letterResult, setLetterResult] = useState(null)
+  const [isEditingLetter, setIsEditingLetter] = useState(false)
+  
+  // History states (local session only)
+  const [descHistory, setDescHistory] = useState([])
+  const [descIndex, setDescIndex] = useState(-1)
+  const [descSource, setDescSource] = useState('')
+  const [letterHistory, setLetterHistory] = useState([])
+  const [letterIndex, setLetterIndex] = useState(-1)
 
   function updateField(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -119,7 +127,7 @@ export default function CreateEventPage() {
 
   async function handleGenerateDescription() {
     if (!form.title || !form.category) {
-      setError('Enter a title and category to generate a description.')
+      setError('Enter a title and category first.')
       return
     }
     setAiDescLoading(true)
@@ -136,8 +144,17 @@ export default function CreateEventPage() {
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.message || 'Failed to generate description')
-      updateField('description', json.description)
+      if (!res.ok) throw new Error(json.message || 'Failed to generate')
+      
+      const newDesc = json.description
+      setDescSource(json.source || '')
+      // Prepend to history and jump to newest
+      setDescHistory(prev => {
+        const updated = [newDesc, ...prev].slice(0, 5)
+        return updated
+      })
+      setDescIndex(0)  // Always show the newest draft first
+      updateField('description', newDesc)
       setDescriptionGenerated(true)
     } catch (err) {
       setError(err.message)
@@ -146,14 +163,29 @@ export default function CreateEventPage() {
     }
   }
 
-  async function handleClashDetection() {
+  // Removal of auto-generate useEffect for AI Content
+  // (Left empty to indicate removal)
+
+  // â”€â”€â”€ Real-time Clash Detection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  useEffect(() => {
+    if (!form.venue || !form.start_date || !form.start_time) return
+
+    const timer = setTimeout(() => {
+      handleClashDetection(true) // Silent/Automatic check
+    }, 600)
+
+    return () => clearTimeout(timer)
+  }, [form.venue, form.start_date, form.start_time, form.end_time])
+
+  async function handleClashDetection(isSilent = false) {
     if (!form.venue || !form.start_date || !form.start_time) {
-      setError('Enter venue, start date, and start time to check clashes.')
+      if (!isSilent) setError('Enter venue, start date, and start time to check clashes.')
       return
     }
+    
     setClashLoading(true)
-    setError('')
-    setClashResult(null)
+    if (!isSilent) setError('')
+    
     try {
       const res = await fetch('/api/organizer/clash-detection', {
         method: 'POST',
@@ -169,21 +201,27 @@ export default function CreateEventPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || 'Clash detection failed')
       setClashResult(json)
+      
+      if (json.hasClash && !isSilent) {
+        window.alert(`Clash Detected!\n${json.message}`)
+      }
     } catch (err) {
-      setError(err.message)
+      if (!isSilent) setError(err.message)
     } finally {
       setClashLoading(false)
     }
   }
 
-  async function handleApprovalLetter() {
+  async function handleApprovalLetter(isSilent = false) {
     if (!form.title || !form.category || !form.venue || !form.start_date) {
-      setError('Fill in title, category, venue, and start date to generate letter.')
+      if (!isSilent) setError('Fill in title, category, venue, and start date to generate letter.')
       return
     }
     setLetterLoading(true)
-    setError('')
-    setLetterResult(null)
+    if (!isSilent) {
+      setError('')
+      // Don't clear result, users want to see current while loading next
+    }
     try {
       const res = await fetch('/api/organizer/approval-letter', {
         method: 'POST',
@@ -206,10 +244,24 @@ export default function CreateEventPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.message || 'Failed to generate letter')
       setLetterResult(json)
+      setLetterHistory(prev => [json.letter, ...prev].slice(0, 5))
+      setLetterIndex(0) // Newest at 0
     } catch (err) {
-      setError(err.message)
+      if (!isSilent) setError(err.message)
     } finally {
       setLetterLoading(false)
+    }
+  }
+
+  const editorRef = useRef(null)
+
+  function scrollEditor(direction) {
+    if (editorRef.current) {
+      const scrollAmount = 300
+      editorRef.current.scrollBy({
+        top: direction === 'down' ? scrollAmount : -scrollAmount,
+        behavior: 'smooth'
+      })
     }
   }
 
@@ -223,7 +275,32 @@ export default function CreateEventPage() {
       return
     }
 
+    // Check clash during submission
     setSubmitting(true)
+    try {
+      const clashRes = await fetch('/api/organizer/clash-detection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          venue: form.venue,
+          start_date: form.start_date,
+          end_date: form.end_date || form.start_date,
+          start_time: form.start_time,
+          end_time: form.end_time || form.start_time,
+        }),
+      })
+      const clashJson = await clashRes.json()
+      if (clashRes.ok && clashJson.hasClash) {
+        setClashResult(clashJson)
+        setError(clashJson.message)
+        window.alert(`Event cannot be planned!\n${clashJson.message}`)
+        setSubmitting(false)
+        return
+      }
+    } catch (err) {
+      console.error(err)
+      // If clash detection fails, we proceed with creation but log it
+    }
     try {
       const payload = {
         ...form,
@@ -486,23 +563,72 @@ export default function CreateEventPage() {
               <label className="block text-sm font-medium text-slate-700">
                 Description <span className="text-rose-500">*</span>
               </label>
-              <button
-                type="button"
-                onClick={handleGenerateDescription}
-                disabled={aiDescLoading}
-                className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
-              >
-                {aiDescLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-                {aiDescLoading ? 'Generating...' : 'AI Generate'}
-              </button>
+              <div className="flex items-center gap-3">
+                {descHistory.length > 1 && (
+                  <div className="flex items-center gap-0.5 bg-indigo-50 border border-indigo-200 rounded-lg px-1 py-0.5">
+                    <button
+                      type="button"
+                      title="Previous draft"
+                      onClick={() => {
+                        const newIdx = descIndex + 1
+                        if (newIdx < descHistory.length) {
+                          setDescIndex(newIdx)
+                          updateField('description', descHistory[newIdx])
+                        }
+                      }}
+                      disabled={descIndex >= descHistory.length - 1}
+                      className="p-0.5 hover:bg-white rounded text-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >â€¹</button>
+                    <span className="text-[10px] font-bold text-indigo-600 px-1.5">
+                      {descIndex + 1} / {descHistory.length}
+                    </span>
+                    <button
+                      type="button"
+                      title="Next draft"
+                      onClick={() => {
+                        const newIdx = descIndex - 1
+                        if (newIdx >= 0) {
+                          setDescIndex(newIdx)
+                          updateField('description', descHistory[newIdx])
+                        }
+                      }}
+                      disabled={descIndex <= 0}
+                      className="p-0.5 hover:bg-white rounded text-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed"
+                    >â€º</button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleGenerateDescription()}
+                  disabled={aiDescLoading}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-700 disabled:opacity-50"
+                >
+                  {aiDescLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                  {aiDescLoading ? 'Generating...' : 'AI Generate'}
+                </button>
+              </div>
             </div>
             <textarea
               rows={5}
               value={form.description}
               onChange={(e) => updateField('description', e.target.value)}
               placeholder="Describe what the event is about..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 focus:bg-white transition resize-none"
+              className={`w-full rounded-xl border bg-slate-50 px-4 py-2.5 text-sm outline-none transition resize-none ${
+                descIndex >= 0 ? 'border-indigo-300 focus:border-indigo-500' : 'border-slate-200 focus:border-indigo-400 focus:bg-white'
+              }`}
             />
+            {descIndex >= 0 && descHistory.length > 0 && (
+              <div className="flex items-center justify-between mt-1.5 px-1">
+                <span className={`text-[10px] font-semibold tracking-widest uppercase rounded px-2 py-0.5 ${
+                  descSource === 'gemini-2.0-flash' ? 'bg-blue-50 text-blue-500' :
+                  descSource === 'grok' ? 'bg-purple-50 text-purple-500' :
+                  'bg-slate-100 text-slate-400'
+                }`}>
+                  {descSource === 'gemini-2.0-flash' ? 'âœ¦ Gemini 2.0' : descSource === 'grok' ? 'âœ¦ Grok' : 'âœ¦ Fallback'}
+                </span>
+                <span className="text-[10px] text-slate-400">Draft {descIndex + 1} of {descHistory.length} â€¢ {descHistory.length > 1 ? 'Navigate with â† â†’' : 'Generate more by clicking AI Generate again'}</span>
+              </div>
+            )}
           </div>
 
           <div>
@@ -539,8 +665,8 @@ export default function CreateEventPage() {
                   >
                     <Pencil className="h-3.5 w-3.5" /> Change Poster
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => updateField('poster', '')}
                     className="rounded-xl bg-rose-500/80 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-600 transition flex items-center gap-2"
                   >
@@ -553,9 +679,8 @@ export default function CreateEventPage() {
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleFileDrop}
-                className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 transition-all cursor-pointer hover:bg-slate-50 relative ${
-                  isDragging ? 'border-indigo-400 bg-indigo-50/50 scale-[0.99]' : 'border-slate-300'
-                }`}
+                className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 transition-all cursor-pointer hover:bg-slate-50 relative ${isDragging ? 'border-indigo-400 bg-indigo-50/50 scale-[0.99]' : 'border-slate-300'
+                  }`}
                 onClick={() => document.getElementById('poster-input').click()}
               >
                 <input
@@ -570,7 +695,7 @@ export default function CreateEventPage() {
                 </div>
                 <p className="text-sm font-semibold text-slate-800">Drag and drop your poster</p>
                 <p className="text-xs text-slate-400 mt-1">or click to browse from device (JPG, PNG, max 2MB)</p>
-                
+
                 {posterProgress > 0 && (
                   <div className="absolute bottom-4 left-4 right-4 h-1 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${posterProgress}%` }} />
@@ -622,11 +747,10 @@ export default function CreateEventPage() {
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`rounded-xl border p-4 text-sm ${
-                clashResult.hasClash
+              className={`rounded-xl border p-4 text-sm ${clashResult.hasClash
                   ? 'border-rose-200 bg-rose-50 text-rose-700'
                   : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              }`}
+                }`}
             >
               <p className="font-semibold">
                 {clashResult.hasClash ? 'Clash Detected!' : 'No Clashes Found'}
@@ -644,19 +768,131 @@ export default function CreateEventPage() {
             </motion.div>
           )}
 
-          {/* Letter Result */}
-          {letterResult && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-xl border border-violet-200 bg-violet-50 p-4"
-            >
-              <p className="text-sm font-semibold text-violet-700 mb-2">Approval Letter</p>
-              <pre className="text-xs text-slate-700 bg-white rounded-lg p-3 border border-slate-200 overflow-x-auto whitespace-pre-wrap font-sans">
-                {letterResult.letter}
-              </pre>
-            </motion.div>
-          )}
+          {/* Letter Result â€” Inline Card */}
+          <div className="mt-8">
+            <AnimatePresence>
+              {letterResult && (
+                <motion.div
+                  key="letter-card"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-100 overflow-hidden"
+                >
+                  {/* â”€â”€ Card Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+                    <div className="flex items-center gap-2.5">
+                      <div className="h-7 w-1.5 bg-indigo-600 rounded-full" />
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900 leading-tight">Approval Letter</h3>
+                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-widest font-semibold">
+                          {isEditingLetter ? 'Editing' : 'Preview'} Â· AI Draft
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Draft history navigation */}
+                      {letterHistory.length > 1 && (
+                        <div className="flex items-center gap-0.5 bg-indigo-50 border border-indigo-200 rounded-lg px-1 py-0.5 mr-2">
+                          <button
+                            type="button"
+                            title="Older draft"
+                            onClick={() => {
+                              const newIdx = letterIndex + 1
+                              if (newIdx < letterHistory.length) {
+                                setLetterIndex(newIdx)
+                                setLetterResult(prev => ({ ...prev, letter: letterHistory[newIdx] }))
+                              }
+                            }}
+                            disabled={letterIndex >= letterHistory.length - 1}
+                            className="p-0.5 text-indigo-500 hover:bg-white rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                          >â€¹</button>
+                          <span className="text-[10px] font-bold text-indigo-600 px-1.5">
+                            {letterIndex + 1} / {letterHistory.length}
+                          </span>
+                          <button
+                            type="button"
+                            title="Newer draft"
+                            onClick={() => {
+                              const newIdx = letterIndex - 1
+                              if (newIdx >= 0) {
+                                setLetterIndex(newIdx)
+                                setLetterResult(prev => ({ ...prev, letter: letterHistory[newIdx] }))
+                              }
+                            }}
+                            disabled={letterIndex <= 0}
+                            className="p-0.5 text-indigo-500 hover:bg-white rounded disabled:opacity-30 disabled:cursor-not-allowed"
+                          >â€º</button>
+                        </div>
+                      )}
+
+                      {/* Redraft button */}
+                      <button
+                        type="button"
+                        onClick={() => handleApprovalLetter()}
+                        disabled={letterLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-violet-200 bg-violet-50 text-violet-600 hover:bg-violet-100 transition disabled:opacity-50"
+                      >
+                        {letterLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                        Redraft
+                      </button>
+
+                      {/* Edit / Done toggle */}
+                      {isEditingLetter ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingLetter(false)}
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm transition"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Done
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingLetter(true)}
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm transition"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* â”€â”€ Letter Body â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                  <div className="p-6 sm:p-8 bg-white">
+                    {isEditingLetter ? (
+                      <textarea
+                        value={letterResult.letter}
+                        onChange={(e) => setLetterResult(prev => ({ ...prev, letter: e.target.value }))}
+                        autoFocus
+                        className="w-full min-h-[520px] text-sm sm:text-base text-slate-800 leading-relaxed font-mono bg-slate-50 border border-indigo-200 rounded-xl p-4 sm:p-6 outline-none focus:border-indigo-400 resize-y transition"
+                        spellCheck="true"
+                      />
+                    ) : (
+                      <div
+                        className="cursor-pointer rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-slate-50/50 transition-all p-4 sm:p-6 min-h-[200px]"
+                        onClick={() => setIsEditingLetter(true)}
+                        title="Click to edit"
+                      >
+                        <pre className="text-sm sm:text-base text-slate-800 whitespace-pre-wrap font-sans leading-relaxed">
+                          {letterResult.letter}
+                        </pre>
+                        <p className="mt-4 text-[10px] text-indigo-400 font-semibold tracking-wider uppercase">Click anywhere to edit</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* â”€â”€ Footer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+                  <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex items-center gap-2 text-[10px] text-slate-400">
+                    <ShieldCheck className="h-3 w-3 shrink-0" />
+                    This letter is ready to be sent for dean review. All edits are saved locally to this session.
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* Submit */}

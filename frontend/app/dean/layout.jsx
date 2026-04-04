@@ -57,6 +57,7 @@ export default function DeanLayout({ children }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [isChatPanelOpen, setIsChatPanelOpen] = useState(false)
   const { data: session, status } = useSession()
   const pathname = usePathname()
   const router = useRouter()
@@ -73,6 +74,15 @@ export default function DeanLayout({ children }) {
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Detect chat panel state
+  useEffect(() => {
+    const check = () => setIsChatPanelOpen(document.body.classList.contains('chat-panel-open'))
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
   }, [])
 
   useEffect(() => {
@@ -140,8 +150,9 @@ export default function DeanLayout({ children }) {
         <div className="flex items-center justify-between px-4 py-5 border-b border-slate-100">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md hover:opacity-90"
+              onClick={() => !isChatPanelOpen && setIsCollapsed(!isCollapsed)}
+              disabled={isChatPanelOpen}
+              className={`h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-md transition-opacity ${isChatPanelOpen ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90'}`}
             >
               <Zap className="h-5 w-5 text-white" />
             </button>

@@ -13,9 +13,15 @@ const Q_A_MAP = {
     "What is the Student Registration feature?": "The Student Registration feature allows students to register for events directly from the dashboard. Their profile details are automatically used to simplify the registration process.",
     "What is the AI Assistance feature?": "The AI Assistance feature helps organizers generate event descriptions and formal approval request letters automatically. It saves time and helps create professional event documentation.",
     "What is the Notify Me feature?": "The Notify Me feature allows students to subscribe to upcoming events and receive updates or reminders so they do not miss important activities.",
+    "What are the future enhancements?": "We have exciting future enhancements planned: 🚀 Advanced Analytics Dashboard - Enhanced event insights and attendee analytics. 📱 Mobile App - Native iOS and Android applications for easy event access. 🤖 AI-Powered Recommendations - Personalized event suggestions based on user preferences. 📍 Location-based Services - Find events near you using geolocation. 🎯 Virtual Event Support - Integrate streaming and hybrid event capabilities. 💬 Advanced Chat Features - Real-time event notifications and interactive Q&A. 📊 Report Generation - Automated event reports for organizers and administrators.",
+    "Tell me about future features": "We have exciting future enhancements planned: 🚀 Advanced Analytics Dashboard - Enhanced event insights and attendee analytics. 📱 Mobile App - Native iOS and Android applications for easy event access. 🤖 AI-Powered Recommendations - Personalized event suggestions based on user preferences. 📍 Location-based Services - Find events near you using geolocation. 🎯 Virtual Event Support - Integrate streaming and hybrid event capabilities. 💬 Advanced Chat Features - Real-time event notifications and interactive Q&A. 📊 Report Generation - Automated event reports for organizers and administrators.",
 };
 
-const INITIAL_SUGGESTIONS = Object.keys(Q_A_MAP).slice(0, 3);
+const INITIAL_SUGGESTIONS = [
+    "What is Aurora Hub?",
+    "What are the main features of this website?",
+    "What are the future enhancements?"
+];
 
 export default function FloatingChat({ isEmbedded = false }) {
     const pathname = usePathname();

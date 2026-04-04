@@ -41,8 +41,8 @@ function RegistrarApprovedEventsPage() {
   const filteredEvents = events.filter(event => {
     if (!searchQuery) return true
     return event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           event.organizer?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           event.venue?.toLowerCase().includes(searchQuery.toLowerCase())
+      event.organizer?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      event.venue?.toLowerCase().includes(searchQuery.toLowerCase())
   })
 
   if (loading) {
@@ -58,7 +58,7 @@ function RegistrarApprovedEventsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Registrar Approved Events</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Registrar  Events</h1>
           <p className="text-sm text-slate-500 mt-1">Events approved by registrar, pending VC final approval</p>
         </div>
       </div>
@@ -93,14 +93,13 @@ function RegistrarApprovedEventsPage() {
             >
               <div className="flex items-start justify-between mb-3">
                 <h3 className="text-sm font-bold text-slate-800 line-clamp-2">{event.title}</h3>
-                <span className={`shrink-0 rounded-full text-xs px-2 py-1 font-medium ${
-                  event.status === 'pending_vc' ? 'bg-amber-100 text-amber-700' :
-                  event.status === 'rejected' ? 'bg-rose-100 text-rose-700' :
-                  'bg-emerald-100 text-emerald-700'
-                }`}>
-                  {event.status === 'pending_vc' ? 'Pending VC' : 
-                   event.status === 'rejected' ? 'VC Rejected' : 
-                   'VC Approved'}
+                <span className={`shrink-0 rounded-full text-xs px-2 py-1 font-medium ${event.status === 'pending_vc' ? 'bg-amber-100 text-amber-700' :
+                    event.status === 'rejected' ? 'bg-rose-100 text-rose-700' :
+                      'bg-emerald-100 text-emerald-700'
+                  }`}>
+                  {event.status === 'pending_vc' ? 'Pending VC' :
+                    event.status === 'rejected' ? 'VC Rejected' :
+                      'VC Approved'}
                 </span>
               </div>
 

@@ -1,7 +1,8 @@
-'use client'
-
-import { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, memo } from 'react'
 import { motion } from 'framer-motion'
+import useSWR from 'swr'
+import { fetcher } from '../../lib/fetcher'
+
 import {
   Calendar,
   ChevronLeft,
@@ -41,7 +42,7 @@ function getStatusLabel(status) {
   return map[status] || status
 }
 
-function EventBadge({ event, onClick }) {
+const EventBadge = memo(({ event, onClick }) => {
   const colorClass = STATUS_COLOR[event.status] || STATUS_COLOR.approved
   return (
     <button
@@ -52,9 +53,9 @@ function EventBadge({ event, onClick }) {
       {event.title}
     </button>
   )
-}
+})
 
-function EventDetailPanel({ event, onClose }) {
+const EventDetailPanel = memo(({ event, onClose }) => {
   if (!event) return null
   return (
     <motion.div
@@ -115,38 +116,26 @@ function EventDetailPanel({ event, onClose }) {
       </div>
     </motion.div>
   )
-}
+})
 
 export default function VenueSchedulePage({ role = 'dean' }) {
-  const [events, setEvents] = useState([])
-  const [loading, setLoading] = useState(true)
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedVenue, setSelectedVenue] = useState('All Venues')
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [view, setView] = useState('month') // 'month' | 'list'
 
-  const limit = 20 // Industry standard: 10-30 items max per request for instant feel
+  const limit = 20
 
   const apiPath = role === 'vc' ? `/api/vc/events?limit=${limit}`
     : role === 'dean' ? `/api/dean/events?limit=${limit}`
     : `/api/registrar/events?limit=${limit}`
 
-  useEffect(() => {
-    let isMounted = true
-    async function load() {
-      try {
-        setLoading(true)
-        const res = await fetch(apiPath, { cache: 'no-store' })
-        if (res.ok && isMounted) {
-          const data = await res.json()
-          setEvents(Array.isArray(data.items) ? data.items : [])
-        }
-      } catch { /* silently fail */ }
-      finally { if (isMounted) setLoading(false) }
-    }
-    load()
-    return () => { isMounted = false }
-  }, [apiPath])
+  const { data: eventsData, error, isLoading } = useSWR(apiPath, fetcher, { 
+    revalidateOnFocus: false,
+    dedupingInterval: 30000 
+  })
+  
+  const events = Array.isArray(eventsData?.items) ? eventsData.items : []
 
   const { year, month, daysInMonth, firstDay, monthName } = useMemo(() => {
     const y = currentDate.getFullYear()
@@ -207,13 +196,22 @@ export default function VenueSchedulePage({ role = 'dean' }) {
     })
   }, [filteredEvents])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
       </div>
     )
   }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] text-rose-500 text-sm">
+        Failed to load events. Please try again.
+      </div>
+    )
+  }
+
 
   return (
     <div className="space-y-6">

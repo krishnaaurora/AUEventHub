@@ -24,6 +24,9 @@ import {
   ChevronUp,
   Info,
   GitBranch,
+  Edit3,
+  Save,
+  RotateCcw,
 } from 'lucide-react'
 
 const APPROVAL_STATUS_STYLES = {
@@ -141,6 +144,12 @@ export default function OrganizerEventDetailPage() {
   const [showDescription, setShowDescription] = useState(false)
   const [showInputs, setShowInputs] = useState(false)
 
+  // Edit Letter State
+  const [isEditingLetter, setIsEditingLetter] = useState(false)
+  const [editedLetter, setEditedLetter] = useState('')
+  const [savingLetter, setSavingLetter] = useState(false)
+  const [editSuccess, setEditSuccess] = useState(false)
+
   const organizerId = session?.user?.registrationId || session?.user?.id || ''
   const organizerName = session?.user?.name || session?.user?.email || ''
 
@@ -169,7 +178,11 @@ export default function OrganizerEventDetailPage() {
 
       if (aiRes.ok) {
         const aiJson = await aiRes.json()
-        setAiData(Array.isArray(aiJson.items) && aiJson.items.length > 0 ? aiJson.items[0] : null)
+        const data = Array.isArray(aiJson.items) && aiJson.items.length > 0 ? aiJson.items[0] : null
+        setAiData(data)
+        if (data?.approval_letter) {
+          setEditedLetter(data.approval_letter)
+        }
       }
 
       if (approvalsRes.ok) {
@@ -196,6 +209,32 @@ export default function OrganizerEventDetailPage() {
   useEffect(() => {
     loadAll()
   }, [eventId])
+
+  async function handleSaveLetter() {
+    if (!editedLetter.trim()) return
+    setSavingLetter(true)
+    setEditSuccess(false)
+    try {
+      const res = await fetch('/api/organizer/event-ai-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          event_id: eventId,
+          approval_letter: editedLetter.trim(),
+        }),
+      })
+      if (res.ok) {
+        setAiData(prev => ({ ...prev, approval_letter: editedLetter.trim() }))
+        setIsEditingLetter(false)
+        setEditSuccess(true)
+        setTimeout(() => setEditSuccess(false), 3000)
+      }
+    } catch (err) {
+      console.error('Failed to save letter:', err)
+    } finally {
+      setSavingLetter(false)
+    }
+  }
 
   async function handleSubmitNote(e) {
     e.preventDefault()
@@ -484,20 +523,77 @@ export default function OrganizerEventDetailPage() {
 
             {/* Approval letter */}
             {aiData.approval_letter && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowLetter((v) => !v)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-indigo-600 transition"
-                >
-                  <FileText className="h-3.5 w-3.5" />
-                  {showLetter ? 'Hide' : 'Show'} Approval Letter
-                  {showLetter ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                </button>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setShowLetter((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wide hover:text-indigo-600 transition"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    {showLetter ? 'Hide' : 'Show'} Approval Letter
+                    {showLetter ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </button>
+
+                  {showLetter && (
+                    <div className="flex items-center gap-2">
+                       {editSuccess && (
+                        <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 animate-pulse">
+                          <CheckCircle2 className="h-3 w-3" /> Saved!
+                        </span>
+                      )}
+                      <button
+                        onClick={() => {
+                          if (isEditingLetter) {
+                            setEditedLetter(aiData.approval_letter)
+                            setIsEditingLetter(false)
+                          } else {
+                            setIsEditingLetter(true)
+                          }
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                          isEditingLetter 
+                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' 
+                            : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                        }`}
+                      >
+                        {isEditingLetter ? <RotateCcw className="h-3 w-3" /> : <Edit3 className="h-3 w-3" />}
+                        {isEditingLetter ? 'Cancel' : 'Edit Letter'}
+                      </button>
+                      
+                      {isEditingLetter && (
+                        <button
+                          onClick={handleSaveLetter}
+                          disabled={savingLetter || editedLetter === aiData.approval_letter}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-sm"
+                        >
+                          {savingLetter ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                          Save Changes
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {showLetter && (
-                  <div className="mt-2 rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-sm text-slate-700 font-mono whitespace-pre-wrap leading-relaxed">
-                    {aiData.approval_letter}
-                  </div>
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="relative"
+                  >
+                    {isEditingLetter ? (
+                      <textarea
+                        value={editedLetter}
+                        onChange={(e) => setEditedLetter(e.target.value)}
+                        className="w-full h-80 rounded-xl border-2 border-indigo-100 bg-white px-5 py-4 text-sm text-slate-700 font-mono leading-relaxed outline-none focus:border-indigo-400 transition-all resize-none shadow-inner"
+                        placeholder="Edit the approval letter here..."
+                      />
+                    ) : (
+                      <div className="rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-sm text-slate-700 font-mono whitespace-pre-wrap leading-relaxed">
+                        {aiData.approval_letter}
+                      </div>
+                    )}
+                  </motion.div>
                 )}
               </div>
             )}

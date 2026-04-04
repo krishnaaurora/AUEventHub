@@ -20,62 +20,76 @@ export async function POST(request) {
       )
     }
 
-    // Find events at the same venue that overlap with the date range
+    const reqStartMin = timeToMinutes(startTime)
+    const reqEndMin = timeToMinutes(endTime || startTime) || reqStartMin + 60
+
+    // Find all events at the same venue on the same date to check for clashes and find gaps
     const query = {
       venue: { $regex: `^${venue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' },
       status: { $nin: ['rejected', 'cancelled'] },
       $or: [
-        // Events where start_date falls within our range
         { start_date: { $gte: startDate, $lte: endDate } },
-        // Events where end_date falls within our range
         { end_date: { $gte: startDate, $lte: endDate } },
-        // Events that span our entire range
         { start_date: { $lte: startDate }, end_date: { $gte: endDate } },
-        // Legacy date field
         { date: { $gte: startDate, $lte: endDate } },
       ],
     }
 
     const overlappingEvents = await eventsCollection.find(query).toArray()
 
-    // Check time overlap for events on the same date
     const clashes = overlappingEvents.filter((event) => {
       const evStart = event.start_time || event.time || ''
-      const evEnd = event.end_time || event.start_time || event.time || ''
-      const reqEnd = endTime || startTime
+      const evEnd = event.end_time || evStart || ''
+      
+      const evStartMin = timeToMinutes(evStart)
+      const evEndMin = timeToMinutes(evEnd) || evStartMin + 60
 
-      // Simple time overlap check
-      if (evStart && startTime) {
-        const evStartMin = timeToMinutes(evStart)
-        const evEndMin = timeToMinutes(evEnd) || evStartMin + 60
-        const reqStartMin = timeToMinutes(startTime)
-        const reqEndMin = timeToMinutes(reqEnd) || reqStartMin + 60
-
-        return reqStartMin < evEndMin && reqEndMin > evStartMin
-      }
-      return true // If no time info, assume clash
+      return reqStartMin < evEndMin && reqEndMin > evStartMin
     })
 
     const clashItems = clashes.map((e) => ({
       title: e.title,
       start_date: e.start_date || e.date,
-      end_date: e.end_date || e.start_date || e.date,
       start_time: e.start_time || e.time,
       end_time: e.end_time || '',
-      status: e.status,
     }))
 
     if (clashItems.length > 0) {
+      // Find a suggestion
+      const busySlots = overlappingEvents.map(e => {
+        const s = timeToMinutes(e.start_time || e.time)
+        const f = timeToMinutes(e.end_time || e.start_time || e.time) || s + 60
+        return { s, f }
+      }).sort((a, b) => a.s - b.s)
+
+      // Find first available slot after 8 AM (480 mins)
+      let suggestion = ''
+      let currentTime = 480 // 8:00 AM
+      const duration = reqEndMin - reqStartMin
+
+      for (const slot of busySlots) {
+        if (slot.s - currentTime >= duration) {
+          suggestion = minutesToTime(currentTime)
+          break
+        }
+        currentTime = Math.max(currentTime, slot.f)
+      }
+
+      if (!suggestion) {
+        suggestion = minutesToTime(currentTime) // Suggest after the last event
+      }
+
       return NextResponse.json({
         hasClash: true,
-        message: `Found ${clashItems.length} event(s) at "${venue}" that overlap with your schedule.`,
+        message: `Venue "${venue}" is busy at ${startTime}.`,
+        suggestion: `Suggested: ${suggestion} on ${startDate}`,
         clashes: clashItems,
       })
     }
 
     return NextResponse.json({
       hasClash: false,
-      message: `No scheduling conflicts found at "${venue}" for the selected date and time.`,
+      message: `No scheduling conflicts found at "${venue}".`,
       clashes: [],
     })
   } catch (error) {
@@ -90,4 +104,12 @@ function timeToMinutes(timeStr) {
   if (!timeStr) return 0
   const [h, m] = String(timeStr).split(':').map(Number)
   return (h || 0) * 60 + (m || 0)
+}
+
+function minutesToTime(mins) {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const displayH = h % 12 || 12
+  return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${ampm}`
 }

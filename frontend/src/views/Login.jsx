@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { getSession, signIn } from 'next-auth/react'
@@ -8,6 +8,7 @@ import './Login.css'
 
 export default function Login() {
   const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [mode, setMode] = React.useState('signin')
   const [form, setForm] = React.useState({
     fullName: '',
@@ -54,68 +55,78 @@ export default function Login() {
     }
 
     setLoading(true)
-    try {
-      if (isSignUp) {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fullName: form.fullName,
-            email: form.email,
-            password: form.password,
-            role: form.role,
-            registrationId: form.registrationId,
-            clubName: form.clubName,
-          }),
-        })
+    
+    startTransition(async () => {
+      try {
+        if (isSignUp) {
+          const res = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fullName: form.fullName,
+              email: form.email,
+              password: form.password,
+              role: form.role,
+              registrationId: form.registrationId,
+              clubName: form.clubName,
+            }),
+          })
 
-        const data = await res.json()
-        if (!res.ok) {
-          setError(data.message || 'Request failed.')
+          const data = await res.json()
+          if (!res.ok) {
+            setError(data.message || 'Request failed.')
+            setLoading(false)
+            return
+          }
+
+          setSuccess('Account created successfully. You can login now.')
+          setMode('signin')
+          setForm((prev) => ({
+            ...prev,
+            password: '',
+            confirmPassword: '',
+            registrationId: '',
+            clubName: '',
+          }))
+          setLoading(false)
           return
         }
 
-        setSuccess('Account created successfully. You can login now.')
-        setMode('signin')
-        setForm((prev) => ({
-          ...prev,
-          password: '',
-          confirmPassword: '',
-          registrationId: '',
-          clubName: '',
-        }))
-        return
+        const signInResult = await signIn('credentials', {
+          redirect: false,
+          email: form.email,
+          password: form.password,
+        })
+
+        if (!signInResult?.ok) {
+          setError('Invalid email or password.')
+          setLoading(false)
+          return
+        }
+
+        const session = await getSession()
+        const role = session?.user?.role
+        const roleToPath = {
+          admin: '/admin/dashboard',
+          student: '/student/dashboard',
+          organizer: '/organizer/dashboard',
+          dean: '/dean/dashboard',
+          registrar: '/registrar/dashboard',
+          vc: '/vc/dashboard',
+        }
+
+        setSuccess('Login successful. Redirecting...')
+        
+        // Fast navigation
+        const target = roleToPath[role] || '/'
+        router.prefetch(target)
+        router.push(target)
+      } catch (err) {
+        setError('Could not connect to server. Check database configuration.')
+      } finally {
+        setLoading(false)
       }
-
-      const signInResult = await signIn('credentials', {
-        redirect: false,
-        email: form.email,
-        password: form.password,
-      })
-
-      if (!signInResult?.ok) {
-        setError('Invalid email or password.')
-        return
-      }
-
-      const session = await getSession()
-      const role = session?.user?.role
-      const roleToPath = {
-        admin: '/admin/dashboard',
-        student: '/student/dashboard',
-        organizer: '/organizer/dashboard',
-        dean: '/dean/dashboard',
-        registrar: '/registrar/dashboard',
-        vc: '/vc/dashboard',
-      }
-
-      setSuccess('Login successful. Redirecting...')
-      router.push(roleToPath[role] || '/')
-    } catch {
-      setError('Could not connect to server. Check database configuration.')
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return (
@@ -243,8 +254,8 @@ export default function Login() {
               </button>
             )}
 
-            <button type="submit" className="auth-submit" disabled={loading}>
-              {loading ? 'Please wait...' : isSignUp ? 'Register' : 'Login'}
+            <button type="submit" className="auth-submit" disabled={loading || isPending}>
+              {loading || isPending ? 'Optimizing...' : isSignUp ? 'Register' : 'Login'}
             </button>
           </form>
 
