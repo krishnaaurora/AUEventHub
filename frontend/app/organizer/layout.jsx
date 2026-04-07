@@ -26,6 +26,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Award,
+  FileText,
+  ChevronUp as ChevronUpIcon,
+  ChevronDown as ChevronDownIcon,
 } from 'lucide-react'
 import getSocket from '../../lib/socket'
 import SidebarTooltip from '../components/ui/SidebarTooltip'
@@ -49,6 +52,7 @@ const navItems = [
   { icon: BarChart3, label: 'Analytics', href: '/organizer/analytics' },
   { icon: Wrench, label: 'AI Tools', href: '/organizer/ai-tools' },
   { icon: Mic, label: 'Speakers & Schedule', href: '/organizer/speakers' },
+  { icon: FileText, label: 'Documentation', href: '/organizer/documentation' },
 ]
 
 const aiInsights = [
@@ -72,6 +76,17 @@ export default function OrganizerLayout({ children }) {
   const profileEmail = session?.user?.email || 'No email available'
   const profileAvatar = session?.user?.avatar || ''
   const profileRole = session?.user?.role || 'organizer'
+  const navRef = useRef(null)
+
+  const scrollNav = (direction) => {
+    if (navRef.current) {
+      const scrollAmount = 150
+      navRef.current.scrollBy({
+        top: direction === 'up' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      })
+    }
+  }
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -174,38 +189,58 @@ export default function OrganizerLayout({ children }) {
           </div>
         </div>
 
-        <nav 
-          className="flex-1 h-full min-h-0 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden overscroll-none scroll-smooth hide-scrollbar"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-        >
-          {navItems.map((item) => {
-            const active = pathname === item.href || (item.href !== '/organizer/dashboard' && pathname?.startsWith(item.href))
-            const Icon = item.icon
-            return (
-              <SidebarTooltip key={item.href} label={item.label} isVisible={shouldShowTooltip}>
-                <Link href={item.href} onClick={() => setSidebarOpen(false)} className="w-full">
-                  <span
-                    className={`
-                      flex items-center ${effectivelyCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
-                      ${active
-                        ? 'bg-indigo-50 text-indigo-700'
-                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}
-                    `}
-                    title={isCollapsed ? item.label : undefined}
-                    aria-label={item.label}
-                  >
-                    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}`}>
-                      <Icon className="h-4 w-4" />
+        <div className="flex-1 flex flex-col min-h-0 relative group">
+          {/* Scroll Up Button */}
+          <button 
+            onClick={() => scrollNav('up')}
+            className="absolute top-0 inset-x-0 z-10 flex h-8 items-center justify-center bg-gradient-to-b from-white via-white/80 to-transparent text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll Up"
+          >
+            <ChevronUpIcon className="h-4 w-4" />
+          </button>
+
+          <nav 
+            ref={navRef}
+            className="flex-1 h-full min-h-0 px-3 py-4 space-y-1 overflow-y-auto overflow-x-hidden overscroll-none scroll-smooth hide-scrollbar transition-all"
+            style={{ WebkitOverflowScrolling: 'touch' }}
+          >
+            {navItems.map((item) => {
+              const active = pathname === item.href || (item.href !== '/organizer/dashboard' && pathname?.startsWith(item.href))
+              const Icon = item.icon
+              return (
+                <SidebarTooltip key={item.href} label={item.label} isVisible={shouldShowTooltip}>
+                  <Link href={item.href} onClick={() => setSidebarOpen(false)} className="w-full">
+                    <span
+                      className={`
+                        flex items-center ${effectivelyCollapsed ? 'justify-center px-2' : 'gap-3 px-3'} rounded-xl py-2.5 text-sm font-medium transition-all duration-200
+                        ${active
+                          ? 'bg-indigo-50 text-indigo-700'
+                          : 'text-slate-500 hover:bg-slate-100 hover:text-slate-800'}
+                      `}
+                      title={isCollapsed ? item.label : undefined}
+                      aria-label={item.label}
+                    >
+                      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${active ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-400'}`}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      {!effectivelyCollapsed && item.label}
+                      {!effectivelyCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
                     </span>
-                    {!effectivelyCollapsed && item.label}
-                    {!effectivelyCollapsed && active && <ChevronRight className="ml-auto h-3.5 w-3.5 text-indigo-400" />}
-                  </span>
-                </Link>
-              </SidebarTooltip>
-            )
-          })}
-          
+                  </Link>
+                </SidebarTooltip>
+              )
+            })}
           </nav>
+
+          {/* Scroll Down Button */}
+          <button 
+            onClick={() => scrollNav('down')}
+            className="absolute bottom-0 inset-x-0 z-10 flex h-8 items-center justify-center bg-gradient-to-t from-white via-white/80 to-transparent text-slate-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            aria-label="Scroll Down"
+          >
+            <ChevronDownIcon className="h-4 w-4" />
+          </button>
+        </div>
           
           <div className="flex-shrink-0 p-3 border-t border-slate-100">
             <SidebarTooltip label="Logout" isVisible={shouldShowTooltip}>
