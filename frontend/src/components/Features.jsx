@@ -251,7 +251,7 @@ export default function Features() {
                                         <button
                                             key={idx}
                                             onClick={() => handleSendMessage(q)}
-                                            className="text-xs md:text-sm bg-white/60 hover:bg-white text-gray-700 py-1.5 px-3 rounded-full border border-gray-200 shadow-sm transition-all hover:border-cyan-300 hover:text-cyan-700 text-left"
+                                            className="text-xs md:text-sm bg-white/60 text-gray-700 py-1.5 px-3 rounded-full border border-gray-200 shadow-sm transition-all text-left"
                                         >
                                             {q}
                                         </button>

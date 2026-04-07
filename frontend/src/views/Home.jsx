@@ -15,11 +15,18 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       <main>
         <Hero />
-        <Features />
-        <Testimonial />
-        <IconMarquee />
+        {/* This div scrolls OVER the sticky Hero — parallax effect */}
+        <div className="relative" style={{ zIndex: 2 }}>
+          <div className="bg-white rounded-t-3xl shadow-[0_-20px_60px_rgba(0,0,0,0.1)] overflow-hidden">
+            <Features />
+            <Testimonial />
+            <IconMarquee />
+          </div>
+        </div>
       </main>
-      <Footer />
+      <div className="relative" style={{ zIndex: 2 }}>
+        <Footer />
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import Navbar from './Navbar'
 import EntryPointButton from './ui/EntryPointButton'
+import { InteractiveGridPattern } from './ui/InteractiveGridPattern'
 
 export default function Hero() {
   const containerRef = useRef(null)
@@ -42,15 +43,15 @@ export default function Hero() {
   return (
     <section
       ref={containerRef}
-      className="relative h-[80vh] min-h-[600px] flex flex-col bg-white overflow-hidden"
+      className="relative h-[80vh] min-h-[600px] flex flex-col bg-white overflow-hidden sticky top-0"
+      style={{ zIndex: 0 }}
     >
-      <motion.div
-        style={{ scale: bgScale }}
-        className="absolute inset-0 z-0 pointer-events-none"
-      >
+      <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-white" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
-      </motion.div>
+      </div>
+
+      {/* Interactive hover grid — each box lights up a different color */}
+      <InteractiveGridPattern containerRef={containerRef} cellSize={40} />
 
       <div className="relative z-20">
         <Navbar />
@@ -126,6 +127,7 @@ export default function Hero() {
 
       <style>{`
         nav, nav * { pointer-events: auto !important; }
+        .Btn-Container { pointer-events: auto !important; }
       `}</style>
     </section >
   )

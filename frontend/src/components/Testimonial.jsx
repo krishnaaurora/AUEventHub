@@ -53,9 +53,9 @@ function Testimonial() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true, margin: "-50px" }}
                     transition={{ duration: 0.5, delay: 0.1 }}
-                    className="bg-white/80 dark:bg-black/50 p-6 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] hover:border-blue-400/50"
+                    className="bg-white/80 dark:bg-black/50 p-6 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300"
                 >
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 pointer-events-none" />
                     <div className="mb-6 relative z-10">
                         {/* Nike Logo Placeholder */}
                         <div className="flex items-center mb-4">
@@ -89,9 +89,9 @@ function Testimonial() {
                         whileInView={{ opacity: 1, x: 0 }}
                         viewport={{ once: true, margin: "-50px" }}
                         transition={{ duration: 0.5, delay: 0.3 }}
-                        className="bg-white/80 dark:bg-black/50 p-6 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] hover:border-blue-400/50"
+                        className="bg-white/80 dark:bg-black/50 p-6 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 pointer-events-none" />
                         <p className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-200 leading-relaxed mb-6 relative z-10">
                             &ldquo;Our goal with Aurora Hub was to build a smarter way for universities to manage events. With automation, AI assistance, and structured approvals, it empowers organizers to focus on innovation rather than paperwork.&rdquo;
                         </p>
@@ -117,9 +117,9 @@ function Testimonial() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true, margin: "-50px" }}
                             transition={{ duration: 0.5, delay: 0.4 }}
-                            className="bg-white/80 dark:bg-black/50 p-5 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30_rgba(59,130,246,0.15)] hover:border-blue-400/50 sm:col-span-2"
+                            className="bg-white/80 dark:bg-black/50 p-5 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 sm:col-span-2"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 pointer-events-none" />
                             <p className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-200 leading-relaxed mb-4 relative z-10">
                                 &ldquo;Our commitment to academic excellence is reflected in our digital transformation journey with Aurora Hub, simplifying student engagement.&rdquo;
                             </p>
@@ -140,9 +140,9 @@ function Testimonial() {
                             whileInView={{ opacity: 1, x: 0 }}
                             viewport={{ once: true, margin: "-50px" }}
                             transition={{ duration: 0.5, delay: 0.5 }}
-                            className="bg-white/80 dark:bg-black/50 p-5 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_0_30px_rgba(59,130,246,0.15)] hover:border-blue-400/50"
+                            className="bg-white/80 dark:bg-black/50 p-5 rounded-xl flex flex-col justify-between border border-gray-200 dark:border-gray-800 backdrop-blur-sm shadow-md group relative overflow-hidden transition-all duration-300"
                         >
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-500/10 opacity-0 pointer-events-none" />
                             <p className="text-sm sm:text-base lg:text-lg text-gray-800 dark:text-gray-200 leading-relaxed mb-4 relative z-10">
                                 &ldquo;Aurora Hub transforms how students and organizers collaborate. The platform makes event discovery, participation, and management effortless for the entire campus community.&rdquo;
                             </p>
