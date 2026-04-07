@@ -26,7 +26,7 @@ export default function Login() {
   const isSignUp = mode === 'signup'
   const cardImage = isSignUp ? '/assets/register.png' : '/assets/login.png'
 
-  const roles = ['Student', 'Organizer', 'Registrar', 'Dean', 'VC']
+  const roles = ['Student', 'Organizer']
 
   const updateField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -259,17 +259,7 @@ export default function Login() {
             </button>
           </form>
 
-          {!isSignUp && (
-            <div className="auth-admin-hint" role="note" aria-live="polite">
-              <p className="auth-admin-hint-title">Admin Test Login</p>
-              <p>
-                Email: <strong>admin@aurora.edu.in</strong>
-              </p>
-              <p>
-                Password: <strong>admin123</strong>
-              </p>
-            </div>
-          )}
+
 
           <div className="auth-mode-switch">
             {isSignUp ? (

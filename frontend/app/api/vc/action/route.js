@@ -38,9 +38,14 @@ export async function POST(request) {
     const notificationsCollection = await getNotificationsCollection()
     const pool = getPool()
 
-    const eventObjectId = ObjectId.isValid(eventId) ? new ObjectId(eventId) : null
-    const eventFilter = eventObjectId ? { _id: eventObjectId } : { _id: eventId }
-    
+    const eventObjectId = (() => { try { return new ObjectId(eventId) } catch { return null } })()
+    const eventFilter = {
+      $or: [
+        { _id: eventId },
+        ...(eventObjectId ? [{ _id: eventObjectId }] : []),
+      ]
+    }
+
     // More permissive filter - find the approval record for this event
     const approvalFilter = {
       $or: [

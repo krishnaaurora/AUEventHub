@@ -41,14 +41,13 @@ const EventRow = memo(({ event, i, onApprove, onReject, actionLoading }) => (
     className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
   >
     <td className="px-5 py-3.5 font-medium text-slate-800 max-w-[200px] truncate">{event.title}</td>
-    <td className="px-5 py-3.5 text-slate-600">{event.organizer || '—'}</td>
-    <td className="px-5 py-3.5 text-slate-600 hidden md:table-cell">{event.department || '—'}</td>
+    <td className="px-5 py-3.5 text-slate-600 hidden md:table-cell">{event.organizer || '—'}</td>
     <td className="px-5 py-3.5 text-slate-600 hidden lg:table-cell">{event.venue || '—'}</td>
-    <td className="px-5 py-3.5 text-slate-600 hidden lg:table-cell">{event.start_date || event.date || '—'}</td>
+    <td className="px-5 py-3.5 text-slate-800 font-medium whitespace-nowrap">{event.start_date || event.date || '—'} {event.start_time ? `at ${event.start_time}` : ''}</td>
     <td className="px-5 py-3.5 text-slate-600 hidden xl:table-cell">{event.end_date || '—'}</td>
     <td className="px-5 py-3.5 text-slate-600 hidden xl:table-cell">{event.approval?.submitted_at || event.created_at || '—'}</td>
     <td className="px-5 py-3.5">
-      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+      <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 whitespace-nowrap border border-amber-200">
         Pending Dean Approval
       </span>
     </td>
@@ -215,10 +214,9 @@ export default function PendingApprovalsPage() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
                 <th className="px-5 py-3.5 text-left font-semibold text-slate-600">Event Name</th>
-                <th className="px-5 py-3.5 text-left font-semibold text-slate-600">Organizer</th>
-                <th className="px-5 py-3.5 text-left font-semibold text-slate-600 hidden md:table-cell">Department</th>
+                <th className="px-5 py-3.5 text-left font-semibold text-slate-600 hidden md:table-cell">Organizer</th>
                 <th className="px-5 py-3.5 text-left font-semibold text-slate-600 hidden lg:table-cell">Venue</th>
-                <th className="px-5 py-3.5 text-left font-semibold text-slate-600 hidden lg:table-cell">Start Date</th>
+                <th className="px-5 py-3.5 text-left font-semibold text-slate-600 whitespace-nowrap">Start Date / Time</th>
                 <th className="px-5 py-3.5 text-left font-semibold text-slate-600 hidden xl:table-cell">End Date</th>
                 <th className="px-5 py-3.5 text-left font-semibold text-slate-600 hidden xl:table-cell">Submitted</th>
                 <th className="px-5 py-3.5 text-left font-semibold text-slate-600">Status</th>

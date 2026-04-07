@@ -55,53 +55,71 @@ export async function GET(request) {
       })
     }
 
-    // Build status query based on filter
-    let statusQuery = {}
+    // Build match conditions
+    let approvalMatch = {}
+    let eventMatch = {}
+
     if (filter === 'pending') {
-      statusQuery = { status: 'pending_registrar' }
+      eventMatch = { status: 'pending_registrar' }
     } else if (filter === 'approved') {
-      statusQuery = { status: { $in: ['pending_vc', 'approved', 'published', 'completed'] } }
+      approvalMatch = { registrar_status: 'approved' }
     } else if (filter === 'rejected') {
-      statusQuery = { status: 'rejected' }
+      approvalMatch = { registrar_status: 'rejected' }
     }
 
-    const events = await eventsCol
-      .find(statusQuery)
-      .sort({ created_at: -1, _id: -1 })
-      .limit(limit)
-      .toArray()
+    let events = []
+    let approvals = []
 
-    const eventIds = events.map((e) => String(e._id))
-
-    let approvalsMap = {}
-    if (eventIds.length > 0) {
-      const approvals = await approvalsCol
-        .find({ event_id: { $in: eventIds } })
-        .toArray()
-      approvalsMap = approvals.reduce((acc, a) => {
-        acc[a.event_id] = a
-        return acc
-      }, {})
+    if (Object.keys(approvalMatch).length > 0) {
+      // Filtered mode: Find approvals first then join events
+      approvals = await approvalsCol.find(approvalMatch).sort({ updatedAt: -1 }).toArray()
+      const eventIds = approvals.map(a => String(a.event_id))
+      const { ObjectId } = require('mongodb')
+      const objectIds = eventIds.map(id => { try { return new ObjectId(id) } catch { return null } }).filter(Boolean)
+      
+      events = await eventsCol.find({
+        $or: [
+          { _id: { $in: eventIds } },
+          ...(objectIds.length > 0 ? [{ _id: { $in: objectIds } }] : [])
+        ]
+      }).toArray()
+    } else {
+      // Standard mode (likely pending): Find events first
+      events = await eventsCol.find(eventMatch).sort({ created_at: -1, _id: -1 }).limit(limit).toArray()
+      const eventIds = events.map(e => String(e._id))
+      approvals = await approvalsCol.find({ event_id: { $in: eventIds } }).toArray()
     }
 
-    // For filtered views, further filter by registrar_status
-    let items = events.map((e) => ({
-      ...e,
-      _id: String(e._id),
-      approval: approvalsMap[String(e._id)] || null,
-    }))
+    // Build Maps
+    const eventsMap = {}
+    events.forEach(e => { eventsMap[String(e._id)] = e })
 
-    if (filter === 'approved') {
-      items = items.filter(
-        (e) => e.approval?.registrar_status === 'approved'
-      )
-    } else if (filter === 'rejected') {
-      items = items.filter(
-        (e) => e.approval?.registrar_status === 'rejected'
-      )
+    const approvalsMap = {}
+    approvals.forEach(a => { approvalsMap[String(a.event_id)] = a })
+
+    // Assemble final list
+    let finalItems = []
+    if (Object.keys(approvalMatch).length > 0) {
+      // Map based on approvals to ensure we only show what was actually actioned by registrar
+      finalItems = approvals.map(a => {
+        const e = eventsMap[String(a.event_id)]
+        if (!e) return null
+        return {
+          ...e,
+          _id: String(e._id),
+          approval: a
+        }
+      }).filter(Boolean)
+    } else {
+      // Map based on events (likely for pending list)
+      finalItems = events.map(e => ({
+        ...e,
+        _id: String(e._id),
+        approval: approvalsMap[String(e._id)] || null
+      }))
     }
 
-    return NextResponse.json({ items })
+    return NextResponse.json({ items: finalItems })
   } catch (error) {
     return NextResponse.json(
       { message: 'Failed to fetch registrar events.', detail: error.message },

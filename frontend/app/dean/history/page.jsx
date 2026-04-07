@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, memo } from 'react'
+import { useEffect, useState, memo, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -77,7 +77,8 @@ export default function EventHistoryPage() {
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(true)
 
-  async function loadHistory(pageNum = 1) {
+  // ✅ useCallback — stable reference for socket listener, avoids re-binding on every render
+  const loadHistory = useCallback(async (pageNum = 1) => {
     try {
       setLoading(true)
       const url = filter
@@ -87,16 +88,20 @@ export default function EventHistoryPage() {
       const json = await res.json()
       setEvents(Array.isArray(json.items) ? json.items : [])
       setHasMore(json.items?.length === 20)
-      
+
       if (json.items?.length === 20) {
-        router.prefetch(filter ? `/api/dean/events?filter=${filter}&page=${pageNum + 1}&limit=20` : `/api/dean/events?page=${pageNum + 1}&limit=20`)
+        router.prefetch(
+          filter
+            ? `/api/dean/events?filter=${filter}&page=${pageNum + 1}&limit=20`
+            : `/api/dean/events?page=${pageNum + 1}&limit=20`
+        )
       }
     } catch {
       // silently fail
     } finally {
       setLoading(false)
     }
-  }
+  }, [filter, router])
 
   useEffect(() => {
     loadHistory(page)
@@ -112,17 +117,19 @@ export default function EventHistoryPage() {
     return () => socket.off('dashboard:refresh', handleRefresh)
   }, [page])
 
-  const filtered = events.filter((e) => {
-    if (!search) return true
+  // ✅ useMemo — filter reruns only when events or search term changes, not on every render
+  const filtered = useMemo(() => {
+    if (!search) return events
     const q = search.toLowerCase()
-    return (
+    return events.filter((e) =>
       (e.title || '').toLowerCase().includes(q) ||
       (e.organizer || '').toLowerCase().includes(q) ||
       (e.department || '').toLowerCase().includes(q)
     )
-  })
+  }, [events, search])
 
-  const getStatusBadge = (event) => {
+  // ✅ useCallback — stable badge renderer passed into memo'd EventRow, prevents re-renders
+  const getStatusBadge = useCallback((event) => {
     const status = event.status || 'pending'
     if (status === 'approved' || status === 'published' || status === 'completed') {
       return (
@@ -143,7 +150,7 @@ export default function EventHistoryPage() {
         </span>
       )
     }
-  }
+  }, [])
 
   return (
     <div className="space-y-6">

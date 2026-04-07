@@ -48,11 +48,11 @@ export async function POST(request) {
       )
     }
 
-    let filter
-    try {
-      filter = { _id: new ObjectId(eventId) }
-    } catch {
-      filter = { _id: eventId }
+    const filter = {
+      $or: [
+        { _id: eventId },
+        ...(eventId.length === 24 ? [{ _id: (() => { try { return new ObjectId(eventId) } catch { return eventId } })() }] : [])
+      ],
     }
 
     const event = await eventsCol.findOne(filter)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -19,7 +19,8 @@ import {
   MessageSquare,
 } from 'lucide-react'
 
-function ApprovalModal({ event, onClose, onSubmit, action }) {
+// ✅ memo — modal only re-renders when the event or action changes
+const ApprovalModal = memo(function ApprovalModal({ event, onClose, onSubmit, action }) {
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -130,7 +131,7 @@ function ApprovalModal({ event, onClose, onSubmit, action }) {
       </motion.div>
     </motion.div>
   )
-}
+})
 
 function VCRegistrarApprovedPage() {
   const [events, setEvents] = useState([])
@@ -139,7 +140,8 @@ function VCRegistrarApprovedPage() {
   const [modal, setModal] = useState(null) // { event, action }
   const [toast, setToast] = useState(null)
 
-  async function loadEvents() {
+  // ✅ useCallback — stable reference so loadEvents doesn't re-create on each render
+  const loadEvents = useCallback(async () => {
     try {
       const res = await fetch('/api/vc/events?filter=dean-approved&limit=100', { cache: 'no-store' })
       if (res.ok) {
@@ -148,11 +150,12 @@ function VCRegistrarApprovedPage() {
       }
     } catch { /* silently fail */ }
     finally { setLoading(false) }
-  }
+  }, [])
 
   useEffect(() => { loadEvents() }, [])
 
-  async function handleAction({ eventId, action, comment }) {
+  // ✅ useCallback — stable reference passed to memoized ApprovalModal
+  const handleAction = useCallback(async ({ eventId, action, comment }) => {
     const res = await fetch('/api/vc/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -168,13 +171,16 @@ function VCRegistrarApprovedPage() {
     setToast({ type: action, message: action === 'approve' ? 'Event approved and published!' : 'Event rejected.' })
     setTimeout(() => setToast(null), 3000)
     loadEvents()
-  }
+  }, [loadEvents])
 
-  const filteredEvents = events.filter(event =>
-    event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.organizer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    event.department?.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // ✅ useMemo — filter only re-runs when events or searchTerm changes
+  const filteredEvents = useMemo(() =>
+    events.filter(event =>
+      event.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.organizer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      event.department?.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  , [events, searchTerm])
 
   if (loading) {
     return (

@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   ClipboardCheck,
   CheckCircle2,
@@ -18,9 +17,6 @@ import {
   User as UserIcon,
   Sparkles,
   X,
-  TrendingUp,
-  Users,
-  Calendar,
 } from 'lucide-react'
 import getSocket from '../../../lib/socket'
 
@@ -135,8 +131,7 @@ function RegistrarDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Welcome */}
+    <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Registrar Portal</p>
         <h1 className="mt-1 text-2xl font-bold text-slate-900">
@@ -145,30 +140,25 @@ function RegistrarDashboard() {
         <p className="mt-1 text-sm text-slate-500">Verify event logistics and ensure scheduling compliance.</p>
       </div>
 
-      {/* Stat Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {statCards.map((card, i) => {
+        {statCards.map((card) => {
           const c = colorMap[card.color]
           const Icon = card.icon
           return (
-            <motion.div
+            <div
               key={card.key}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className={`rounded-2xl border ${c.border} ${c.bg} p-5 shadow-sm`}
+              className={`rounded-2xl border ${c.border} ${c.bg} p-5 shadow-sm transition-all hover:shadow-md cursor-default`}
             >
               <div className={`h-10 w-10 rounded-xl ${c.icon} flex items-center justify-center mb-3`}>
                 <Icon className={`h-5 w-5 ${c.text}`} />
               </div>
               <p className="text-3xl font-bold text-slate-900">{stats[card.key]}</p>
               <p className="text-xs text-slate-500 mt-1">{card.label}</p>
-            </motion.div>
+            </div>
           )
         })}
       </div>
 
-      {/* Recent Event Requests */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
@@ -184,15 +174,12 @@ function RegistrarDashboard() {
           <p className="text-sm text-slate-400 py-8 text-center">No pending events for verification.</p>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recentEvents.map((event, i) => (
-              <motion.div
+            {recentEvents.map((event) => (
+              <div
                 key={event._id}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="rounded-xl border border-slate-100 bg-slate-50 p-5 hover:shadow-md hover:border-emerald-200 transition-all"
+                className="rounded-xl border border-slate-100 bg-slate-50 p-5 hover:shadow-md hover:border-emerald-200 transition-all group"
               >
-                <h3 className="text-sm font-bold text-slate-800 truncate">{event.title}</h3>
+                <h3 className="text-sm font-bold text-slate-800 truncate group-hover:text-emerald-700 transition-colors">{event.title}</h3>
                 <div className="mt-3 space-y-1.5 text-xs text-slate-500">
                   <div className="flex items-center gap-2">
                     <UserIcon className="h-3.5 w-3.5 text-slate-400" />
@@ -238,78 +225,70 @@ function RegistrarDashboard() {
                     Reject
                   </button>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* Reject Modal */}
-      <AnimatePresence>
-        {rejectModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => { setRejectModal(null); setRejectReason('') }}
+      {rejectModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 transition-opacity duration-200"
+          onClick={() => { setRejectModal(null); setRejectReason('') }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl transition-transform duration-200"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-slate-900">Reject Event</h3>
-                <button onClick={() => { setRejectModal(null); setRejectReason('') }} className="text-slate-400 hover:text-slate-600">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <p className="text-sm text-slate-500 mb-4">
-                Rejecting event for logistics verification.
-              </p>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Rejection</label>
-              <textarea
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                rows={3}
-                placeholder="e.g., Venue conflict, Infrastructure not available, Schedule overlap..."
-                className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300"
-              />
-              <div className="flex flex-wrap gap-2 mt-3 mb-4">
-                {['Venue conflict', 'Infrastructure not available', 'Schedule overlap', 'Resource constraints'].map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRejectReason(r)}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors"
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-end gap-3">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-slate-900">Reject Event</h3>
+              <button onClick={() => { setRejectModal(null); setRejectReason('') }} className="text-slate-400 hover:text-slate-600">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">
+              Rejecting event for logistics verification.
+            </p>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Rejection</label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+              placeholder="e.g., Venue conflict, Infrastructure not available, Schedule overlap..."
+              className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300"
+            />
+            <div className="flex flex-wrap gap-2 mt-3 mb-4">
+              {['Venue conflict', 'Infrastructure not available', 'Schedule overlap', 'Resource constraints'].map((r) => (
                 <button
-                  onClick={() => { setRejectModal(null); setRejectReason('') }}
-                  className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                  key={r}
+                  onClick={() => setRejectReason(r)}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-colors"
                 >
-                  Cancel
+                  {r}
                 </button>
-                <button
-                  onClick={() => handleReject(rejectModal)}
-                  disabled={!rejectReason.trim()}
-                  className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
-                >
-                  Confirm Rejection
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => { setRejectModal(null); setRejectReason('') }}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleReject(rejectModal)}
+                disabled={!rejectReason.trim()}
+                className="rounded-xl bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 transition-colors disabled:opacity-50"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default RegistrarDashboard
+

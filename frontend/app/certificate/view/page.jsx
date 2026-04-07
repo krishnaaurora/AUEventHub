@@ -1,7 +1,6 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
 import { Award, Download, Share2, ArrowLeft, Printer } from 'lucide-react'
 import { useRef, useEffect, useState } from 'react'
 
@@ -75,9 +74,7 @@ export default function CertificateViewPage() {
       </div>
 
       {/* Certificate Frame */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
+      <div
         ref={certRef}
         className="certificate-canvas relative w-full max-w-4xl rounded-[2rem] overflow-hidden shadow-2xl print:shadow-none print:m-0 print:w-full"
         style={{ 
@@ -120,10 +117,7 @@ export default function CertificateViewPage() {
         <div className="relative h-full flex flex-col items-center justify-center text-center gap-2 sm:gap-4">
           
           {/* Badge Icon */}
-          <motion.div 
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
+          <div 
             className="h-16 w-16 sm:h-24 sm:w-24 rounded-full flex items-center justify-center shadow-2xl mb-2"
             style={{ 
                 background: `linear-gradient(135deg, ${accentColor}, ${accentColor}99)`,
@@ -131,7 +125,7 @@ export default function CertificateViewPage() {
             }}
           >
             <Award className="h-8 w-8 sm:h-12 sm:w-12 text-white" />
-          </motion.div>
+          </div>
 
           {/* Org Name */}
           <p 
@@ -232,7 +226,7 @@ export default function CertificateViewPage() {
             }
           }
         `}</style>
-      </motion.div>
+      </div>
 
       <div className="mt-8 text-center print:hidden">
         <p className="text-sm text-slate-400">

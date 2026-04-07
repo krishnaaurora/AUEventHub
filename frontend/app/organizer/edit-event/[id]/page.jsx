@@ -1,8 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
+import { useAIDescription } from '@/hooks/useAIDescription'
+import { useClashDetection } from '@/hooks/useClashDetection'
+import { useApprovalLetter } from '@/hooks/useApprovalLetter'
 import { motion } from 'framer-motion'
 import {
   CalendarDays,
@@ -71,12 +74,11 @@ export default function EditEventPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  // AI states
-  const [aiDescLoading, setAiDescLoading] = useState(false)
-  const [clashLoading, setClashLoading] = useState(false)
-  const [clashResult, setClashResult] = useState(null)
-  const [letterLoading, setLetterLoading] = useState(false)
-  const [letterResult, setLetterResult] = useState(null)
+  // ✅ Custom hooks — delegate AI + heavy calls to Flask via services/
+  const { generate: generateDesc, loading: aiDescLoading } = useAIDescription()
+  const { check: detectClash, result: clashResult, loading: clashLoading, error: clashError } = useClashDetection()
+  const { generate: generateLetter, result: letterResult, loading: letterLoading } = useApprovalLetter()
+
   const [posterProgress, setPosterProgress] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
 
@@ -117,21 +119,23 @@ export default function EditEventPage() {
     if (id) fetchEvent()
   }, [id])
 
-  function updateField(field, value) {
+  // ✅ useCallback — stable field setter; typed input doesn't re-create fn on every char
+  const updateField = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
-  }
+  }, [])
 
-  function handleFileDrop(e) {
+  // ✅ useCallback — drag/drop handlers are stable references, no re-bind on render
+  const handleFileDrop = useCallback((e) => {
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
     if (file) handleFile(file)
-  }
+  }, [])
 
-  function handleFileSelect(e) {
+  const handleFileSelect = useCallback((e) => {
     const file = e.target.files[0]
     if (file) handleFile(file)
-  }
+  }, [])
 
   function handleFile(file) {
     if (!file.type.startsWith('image/')) {
@@ -156,101 +160,49 @@ export default function EditEventPage() {
     reader.readAsDataURL(file)
   }
 
-  async function handleGenerateDescription() {
-    if (!form.title || !form.category) {
-      setError('Enter a title and category to generate a description.')
-      return
-    }
-    setAiDescLoading(true)
-    setError('')
-    try {
-      const res = await fetch('/api/organizer/ai-description', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: form.title,
-          category: form.category,
-          department: form.department,
-          venue: form.venue,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || 'Failed to generate description')
-      updateField('description', json.description)
+  // ✅ Uses useAIDescription hook — calls Flask /api/ai/description
+  const handleGenerateDescription = useCallback(async () => {
+    const result = await generateDesc({
+      title: form.title,
+      category: form.category,
+      department: form.department,
+      venue: form.venue,
+    })
+    if (result?.description) {
+      updateField('description', result.description)
       setDescriptionGenerated(true)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setAiDescLoading(false)
     }
-  }
+  }, [form.title, form.category, form.department, form.venue, generateDesc])
 
-  async function handleClashDetection() {
-    if (!form.venue || !form.start_date || !form.start_time) {
-      setError('Enter venue, start date, and start time to check clashes.')
-      return
-    }
-    setClashLoading(true)
-    setError('')
-    setClashResult(null)
-    try {
-      const res = await fetch('/api/organizer/clash-detection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          venue: form.venue,
-          start_date: form.start_date,
-          end_date: form.end_date || form.start_date,
-          start_time: form.start_time,
-          end_time: form.end_time || form.start_time,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || 'Clash detection failed')
-      setClashResult(json)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setClashLoading(false)
-    }
-  }
+  // ✅ Uses useClashDetection hook — calls Flask /api/events/clash-detection
+  const handleClashDetection = useCallback(async () => {
+    await detectClash({
+      venue: form.venue,
+      start_date: form.start_date,
+      end_date: form.end_date || form.start_date,
+      start_time: form.start_time,
+      end_time: form.end_time || form.start_time,
+    })
+    if (clashError) setError(clashError)
+  }, [form.venue, form.start_date, form.end_date, form.start_time, form.end_time, detectClash, clashError])
 
-  async function handleApprovalLetter() {
-    if (!form.title || !form.category || !form.venue || !form.start_date) {
-      setError('Fill in title, category, venue, and start date to generate letter.')
-      return
-    }
-    setLetterLoading(true)
-    setError('')
-    setLetterResult(null)
-    try {
-      const res = await fetch('/api/organizer/approval-letter', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: form.title,
-          category: form.category,
-          department: form.department,
-          venue: form.venue,
-          start_date: form.start_date,
-          end_date: form.end_date,
-          start_time: form.start_time,
-          end_time: form.end_time,
-          organizer: session?.user?.name || '',
-          description: form.description,
-          max_participants: form.max_participants,
-          guest_speakers: form.guest_speakers,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.message || 'Failed to generate letter')
-      setLetterResult(json)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLetterLoading(false)
-    }
-  }
+  // ✅ Uses useApprovalLetter hook — calls Flask /api/ai/approval-letter
+  const handleApprovalLetter = useCallback(async () => {
+    await generateLetter({
+      title: form.title,
+      category: form.category,
+      department: form.department,
+      venue: form.venue,
+      start_date: form.start_date,
+      end_date: form.end_date,
+      start_time: form.start_time,
+      end_time: form.end_time,
+      organizer: session?.user?.name || '',
+      description: form.description,
+      max_participants: form.max_participants,
+      guest_speakers: form.guest_speakers,
+    })
+  }, [form, session, generateLetter])
 
   async function handleSubmit(e) {
     e.preventDefault()

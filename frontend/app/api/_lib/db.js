@@ -221,6 +221,63 @@ export async function ensureAuthCollections() {
         },
       )
     }
+
+    // Seed Dean
+    const deanEmail = 'dean@aurora.edu.in'
+    const existingDean = await usersCollection.findOne({ email: deanEmail })
+    if (!existingDean) {
+      await usersCollection.insertOne({
+        fullName: 'Aurora Dean',
+        email: deanEmail,
+        password: 'dean123',
+        role: 'dean',
+        accountStatus: 'active',
+        registrationId: 'DEAN-0001',
+        department: 'Administration',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    } else {
+      await usersCollection.updateOne({ email: deanEmail }, { $set: { password: 'dean123', role: 'dean' } })
+    }
+
+    // Seed Registrar
+    const regEmail = 'register@aurora.edu.in'
+    const existingReg = await usersCollection.findOne({ email: regEmail })
+    if (!existingReg) {
+      await usersCollection.insertOne({
+        fullName: 'Aurora Registrar',
+        email: regEmail,
+        password: 'register123',
+        role: 'registrar',
+        accountStatus: 'active',
+        registrationId: 'REG-0001',
+        department: 'Administration',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    } else {
+      await usersCollection.updateOne({ email: regEmail }, { $set: { password: 'register123', role: 'registrar' } })
+    }
+
+    // Seed Vice Chancellor
+    const vcEmail = 'vicechancellor@aurora.edu.in'
+    const existingVc = await usersCollection.findOne({ email: vcEmail })
+    if (!existingVc) {
+      await usersCollection.insertOne({
+        fullName: 'Aurora Vice Chancellor',
+        email: vcEmail,
+        password: 'vicechancellor123',
+        role: 'vc',
+        accountStatus: 'active',
+        registrationId: 'VC-0001',
+        department: 'Administration',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    } else {
+      await usersCollection.updateOne({ email: vcEmail }, { $set: { password: 'vicechancellor123', role: 'vc' } })
+    }
   })
 }
 

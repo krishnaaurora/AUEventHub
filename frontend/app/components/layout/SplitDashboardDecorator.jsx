@@ -1,162 +1,93 @@
 "use client";
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { MessageCircle, X, Sparkles } from 'lucide-react';
 import dynamic from 'next/dynamic';
+
+// Keep AI Chat lazy-loaded so it doesn't affect initial render speed
 const FloatingChat = dynamic(() => import('../FloatingChat'), { 
   ssr: false,
-  loading: () => (
-    <div className="flex h-full items-center justify-center bg-gray-50/50">
-      <div className="animate-pulse text-indigo-500 font-medium">Loading Assistant...</div>
-    </div>
-  )
+  loading: () => null
 });
 
 export default function SplitDashboardDecorator({ children }) {
     const pathname = usePathname();
     const [isOpen, setIsOpen] = useState(false);
-    const [sidebarWidth, setSidebarWidth] = useState(380);
-    const [isResizing, setIsResizing] = useState(false);
-    const containerRef = useRef(null);
-
-    // Filter paths: Organizer, Dean, Registrar, VC
+    
+    // Only show the AI assistant on specific role-based dashboard routes
     const allowedPrefixes = ["/organizer", "/dean", "/registrar", "/vc"];
     const isAllowedPage = allowedPrefixes.some(prefix => pathname?.toLowerCase().startsWith(prefix));
 
-    useEffect(() => {
-        const saved = localStorage.getItem('aurora-chat-width');
-        if (saved) setSidebarWidth(parseInt(saved));
-    }, []);
-
-    // Effect to hide other sidebars when chat is open
+    // Simple performance-focused class management
     useEffect(() => {
         if (isOpen && isAllowedPage) {
-            document.body.classList.add('chat-panel-open');
+            document.body.style.overflow = 'hidden';
+            document.body.classList.add('chat-panel-active');
         } else {
-            document.body.classList.remove('chat-panel-open');
+            document.body.style.overflow = 'unset';
+            document.body.classList.remove('chat-panel-active');
         }
     }, [isOpen, isAllowedPage]);
-
-    const handleMouseDown = (e) => {
-        setIsResizing(true);
-        e.preventDefault();
-    };
-
-    useEffect(() => {
-        const handleMouseMove = (e) => {
-            if (!isResizing || !containerRef.current) return;
-            const containerRect = containerRef.current.getBoundingClientRect();
-            const newWidth = containerRect.right - e.clientX;
-            const clampedWidth = Math.min(Math.max(newWidth, 300), containerRect.width / 2);
-            setSidebarWidth(clampedWidth);
-            localStorage.setItem('aurora-chat-width', clampedWidth);
-        };
-
-        const handleMouseUp = () => setIsResizing(false);
-
-        if (isResizing) {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
-            document.body.style.cursor = 'col-resize';
-        } else {
-            document.body.style.cursor = 'default';
-        }
-
-        return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isResizing]);
 
     if (!isAllowedPage) return <>{children}</>;
 
     return (
-        <div
-            ref={containerRef}
-            className={`w-full min-h-screen bg-white m-0 p-0 ${isOpen ? 'flex overflow-hidden' : 'relative'} ${isResizing ? 'select-none' : ''}`}
-            style={isOpen ? { paddingRight: `${sidebarWidth}px` } : {}}
-        >
-            {/* 1. MAIN CONTENT AREA */}
-            <div className={`main-content-flow bg-white relative transition-all duration-300 ${isOpen ? 'flex flex-col' : 'w-full'}`}>
-                {children}
+        <div className="flex min-h-screen bg-slate-50 relative">
+            {/* 1. MAIN APPLICATION AREA */}
+            <main className={`flex-1 min-w-0 transition-all duration-300 ${isOpen ? 'pr-[380px]' : ''}`}>
+                <div className="h-full">
+                    {children}
+                </div>
 
-                {/* Floating Toggle Button (Only when closed) */}
+                {/* Light-weight Chat Toggle */}
                 {!isOpen && (
                     <button
                         onClick={() => setIsOpen(true)}
-                        className="fixed bottom-8 right-8 z-[60] h-14 w-14 rounded-full bg-indigo-600 text-white shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+                        className="fixed bottom-8 right-8 z-[100] h-14 w-14 rounded-full bg-indigo-600 text-white shadow-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all group"
                     >
-                        <MessageCircle className="h-6 w-6" />
+                        <MessageCircle className="h-6 w-6 group-hover:animate-pulse" />
+                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-emerald-500 border-2 border-white rounded-full" />
                     </button>
                 )}
-            </div>
+            </main>
 
-            {/* 2. RESIZABLE ASSISTANT */}
+            {/* 2. STATIC ASSISTANT OVERLAY (No Resizing for speed) */}
             {isOpen && (
-                <>
-                    <div
-                        onMouseDown={handleMouseDown}
-                        className={`
-                            w-[2px] h-screen cursor-col-resize hover:bg-indigo-500/50 transition-all z-[45] shrink-0
-                            ${isResizing ? 'bg-indigo-600' : 'bg-gray-200'}
-                        `}
-                    />
-                    <aside
-                        style={{ width: `${sidebarWidth}px` }}
-                        className="chat-panel-container bg-white flex flex-col border-l border-gray-200 shrink-0 overflow-hidden"
-                    >
-                        <div
-                            style={{ fontFamily: '"Times New Roman", Times, serif' }}
-                            className="p-4 bg-indigo-600 text-white flex items-center justify-between shadow-md relative z-10"
+                <aside 
+                    className="fixed top-0 right-0 h-screen w-[380px] bg-white border-l border-slate-200 z-[200] flex flex-col shadow-2xl animate-in slide-in-from-right duration-300"
+                >
+                    <header className="px-6 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="font-black text-[10px] tracking-widest text-slate-400 uppercase">AI ASSISTANT</span>
+                        </div>
+                        <button
+                            onClick={() => setIsOpen(false)}
+                            className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"
                         >
-                            <div className="flex items-center gap-2">
-                                <Sparkles className="h-4 w-4 text-indigo-200" />
-                                <span className="font-bold text-xs tracking-wider uppercase">RIYA AI</span>
-                            </div>
-                            <button
-                                onClick={() => setIsOpen(false)}
-                                className="p-1 hover:bg-white/10 rounded-md transition-colors"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-                        <div className="flex-1 overflow-hidden relative">
-                            <FloatingChat isEmbedded={true} />
-                        </div>
-                    </aside>
-                </>
+                            <X className="h-5 w-5" />
+                        </button>
+                    </header>
+                    
+                    <div className="flex-1 overflow-hidden">
+                        <FloatingChat isEmbedded={true} />
+                    </div>
+                    
+                    {/* Clean background for the assistant area */}
+                    <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Powered by University AI HUB</p>
+                    </div>
+                </aside>
             )}
 
             <style jsx global>{`
-                /* ── ZEN SCROLLING ── */
-                * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
-                *::-webkit-scrollbar { display: none !important; }
-
-                /* ── CHAT PANEL - FIXED ASIDE ── */
-                aside.chat-panel-container {
-                    position: fixed !important;
-                    top: 0 !important; right: 0 !important; bottom: 0 !important;
-                    height: 100vh !important;
-                    z-index: 50;
-                    background: #ffffff;
-                    overflow: hidden !important;
-                    border-left: 1px solid #e5e7eb;
-                    display: flex;
-                    flex-direction: column;
-                }
-                aside.chat-panel-container > div:last-child {
-                    flex: 1; overflow-y: auto; overflow-x: hidden;
-                }
-
-                /* ── MAIN CONTENT ── */
-                .main-content-flow { flex: 1; min-width: 0; overflow-y: auto; overflow-x: hidden; }
-
-                /* ── Tooltip on hover in collapsed sidebar ── */
-                body.chat-panel-open aside[class*="fixed"][class*="left-0"] .group:hover > [class*="absolute"] {
-                    opacity: 1 !important;
-                    visibility: visible !important;
-                    pointer-events: auto !important;
-                }
+                /* Prevent horizontal scrolls in the layout */
+                body { overflow-x: hidden !important; }
+                
+                /* Fast scrollbars for inner content */
+                .custom-inner-scroll::-webkit-scrollbar { width: 6px; }
+                .custom-inner-scroll::-webkit-scrollbar-track { background: transparent; }
+                .custom-inner-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
             `}</style>
         </div>
     );

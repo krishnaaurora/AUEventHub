@@ -142,6 +142,48 @@ export default function AdminDashboardPage() {
           ))}
         </div>
       </section>
+
+      {/* Official System Credentials */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-slate-900">System Access Credentials</h2>
+        <p className="mt-1 text-sm text-slate-500 mb-4">
+          The following core administration accounts are officially provisioned in the database.
+        </p>
+        
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <table className="min-w-full text-sm text-left">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-4 py-3 font-medium text-slate-900">Role</th>
+                <th className="px-4 py-3 font-medium text-slate-900">Official Login Email</th>
+                <th className="px-4 py-3 font-medium text-slate-900">Default Password</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <tr>
+                <td className="px-4 py-3 w-1/4"><span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Vice Chancellor</span></td>
+                <td className="px-4 py-3 text-slate-600 font-mono">vicechancellor@aurora.edu.in</td>
+                <td className="px-4 py-3 text-slate-600 font-mono">vicechancellor123</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 w-1/4"><span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">Dean</span></td>
+                <td className="px-4 py-3 text-slate-600 font-mono">dean@aurora.edu.in</td>
+                <td className="px-4 py-3 text-slate-600 font-mono">dean123</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 w-1/4"><span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-700/10">Registrar</span></td>
+                <td className="px-4 py-3 text-slate-600 font-mono">register@aurora.edu.in</td>
+                <td className="px-4 py-3 text-slate-600 font-mono">register123</td>
+              </tr>
+              <tr>
+                <td className="px-4 py-3 w-1/4"><span className="inline-flex items-center rounded-md bg-rose-50 px-2 py-1 text-xs font-medium text-rose-700 ring-1 ring-inset ring-rose-700/10">Administrator</span></td>
+                <td className="px-4 py-3 text-slate-600 font-mono">admin@aurora.edu.in</td>
+                <td className="px-4 py-3 text-slate-600 font-mono">admin123</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   )
 }

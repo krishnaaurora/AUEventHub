@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -104,7 +104,8 @@ export default function OrganizerLayout({ children }) {
     }
   }, [userId])
 
-  function handleLogout() { router.push('/login') }
+  // ✅ useCallback — stable logout handler, not re-created on every layout render
+  const handleLogout = useCallback(() => { router.push('/login') }, [router])
 
   // Detect chat panel collapse
   const [isChatPanelOpen, setIsChatPanelOpen] = useState(false);
@@ -313,7 +314,20 @@ export default function OrganizerLayout({ children }) {
           </div>
         </header>
 
-        <main className="flex-1">{children}</main>
+        {/* ✅ 7. Suspense — streams page content while heavy sub-trees load */}
+        <main className="flex-1">
+          <Suspense fallback={
+            <div className="p-6 space-y-4 animate-pulse">
+              <div className="h-8 w-64 bg-slate-200 rounded-xl" />
+              <div className="grid grid-cols-3 gap-4">
+                {[1,2,3].map(i => <div key={i} className="h-28 bg-slate-100 rounded-2xl" />)}
+              </div>
+              <div className="h-48 bg-slate-100 rounded-2xl" />
+            </div>
+          }>
+            {children}
+          </Suspense>
+        </main>
       </div>
 
       <style jsx>{`

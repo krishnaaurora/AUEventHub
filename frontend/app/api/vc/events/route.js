@@ -60,120 +60,100 @@ export async function GET(request) {
         matchConditions = { dean_status: 'approved' }
         break
       case 'approved':
+      case 'published':
         matchConditions = { vc_status: 'approved' }
         break
       case 'rejected':
         matchConditions = { vc_status: 'rejected' }
         break
-      case 'published':
-        matchConditions = { vc_status: 'approved' }
-        break
       default:
-        // All events that have reached VC level
         matchConditions = {
           dean_status: 'approved',
           registrar_status: 'approved'
         }
     }
 
-    // Get events with approval data
-    const events = await approvalsCollection.aggregate([
-      { $match: matchConditions },
-      {
-        $lookup: {
-          from: 'events',
-          let: { searchId: '$event_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $or: [
-                    // Match as string _id
-                    { $eq: [{ $toString: '$_id' }, '$$searchId'] },
-                    // Match as ObjectId (when event_id is valid ObjectId string)
-                    {
-                      $eq: [
-                        '$_id',
-                        {
-                          $cond: [
-                            { $regexMatch: { input: '$$searchId', regex: /^[a-fA-F0-9]{24}$/ } },
-                            { $toObjectId: '$$searchId' },
-                            null
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                }
-              }
-            }
-          ],
-          as: 'event'
-        }
-      },
-      { $unwind: '$event' },
-      {
-        $lookup: {
-          from: 'event_details',
-          localField: 'event_id',
-          foreignField: 'event_id',
-          as: 'details'
-        }
-      },
-      {
-        $lookup: {
-          from: 'event_ai_data',
-          localField: 'event_id',
-          foreignField: 'event_id',
-          as: 'ai_data'
-        }
-      },
-      {
-        $lookup: {
-          from: 'event_trending',
-          localField: 'event_id',
-          foreignField: 'event_id',
-          as: 'trending'
-        }
-      },
-      {
-        $project: {
-          _id: '$event._id',
-          title: '$event.title',
-          organizer_name: { $ifNull: ['$event.organizer_name', '$event.organizer'] },
-          organizer: '$event.organizer',
-          department: '$event.department',
-          venue: '$event.venue',
-          start_date: '$event.start_date',
-          end_date: '$event.end_date',
-          start_time: '$event.start_time',
-          end_time: '$event.end_time',
-          max_participants: '$event.max_participants',
-          status: '$event.status',
-          poster: '$event.poster',
-          description: '$event.description',
-          created_at: '$event.created_at',
-          organizer_id: '$event.organizer_id',
-          approval: {
-            dean_status: '$dean_status',
-            registrar_status: '$registrar_status',
-            vc_status: '$vc_status',
-            rejection_reason: '$rejection_reason'
-          },
-          details: { $arrayElemAt: ['$details', 0] },
-          ai_data: { $arrayElemAt: ['$ai_data', 0] },
-          trending: { $arrayElemAt: ['$trending', 0] }
-        }
-      },
-      { $sort: { created_at: -1 } },
-      { $skip: offset },
-      { $limit: limit }
-    ]).toArray()
+    const { ObjectId } = require('mongodb')
+    
+    // 1. Get Approvals matching VC status
+    const allApprovals = await approvalsCollection.find(matchConditions).sort({ submitted_at: -1 }).toArray()
+    
+    // Calculate total count
+    const totalCount = allApprovals.length
+    
+    // Apply pagination
+    const paginatedApprovals = allApprovals.slice(offset, offset + limit)
+    
+    // 2. Safely gather IDs
+    const eventIds = paginatedApprovals.map(a => String(a.event_id))
+    const objectIds = eventIds.map(id => { try { return new ObjectId(id) } catch { return null } }).filter(Boolean)
+
+    // 3. Find matching events
+    const rawEvents = await eventsCollection.find({
+      $or: [
+        { _id: { $in: eventIds } },
+        ...(objectIds.length > 0 ? [{ _id: { $in: objectIds } }] : [])
+      ]
+    }).toArray()
+    
+    // Create an events dictionary for O(1) matching
+    const eventsMap = {}
+    for (const e of rawEvents) {
+      eventsMap[String(e._id)] = e
+    }
+
+    // Fetch related collections (details, ai, trending) safely
+    const eIds = rawEvents.map(e => String(e._id))
+    const details = await detailsCollection.find({ event_id: { $in: eIds } }).toArray()
+    const aiData = await aiDataCollection.find({ event_id: { $in: eIds } }).toArray()
+    const trending = await trendingCollection.find({ event_id: { $in: eIds } }).toArray()
+
+    const detailsMap = {}
+    for (const d of details) detailsMap[String(d.event_id)] = d
+    
+    const aiDataMap = {}
+    for (const ai of aiData) aiDataMap[String(ai.event_id)] = ai
+    
+    const trendingMap = {}
+    for (const t of trending) trendingMap[String(t.event_id)] = t
+
+    // 4. Map them together safely
+    const events = paginatedApprovals.map(approval => {
+      const parentEvent = eventsMap[String(approval.event_id)]
+      if (!parentEvent) return null // Drop corrupted mappings
+      
+      return {
+        _id: String(parentEvent._id),
+        title: parentEvent.title,
+        organizer_name: parentEvent.organizer_name || parentEvent.organizer,
+        organizer: parentEvent.organizer,
+        department: parentEvent.department,
+        venue: parentEvent.venue,
+        start_date: parentEvent.start_date,
+        end_date: parentEvent.end_date,
+        start_time: parentEvent.start_time,
+        end_time: parentEvent.end_time,
+        max_participants: parentEvent.max_participants,
+        status: parentEvent.status,
+        poster: parentEvent.poster,
+        description: parentEvent.description,
+        created_at: parentEvent.created_at,
+        organizer_id: parentEvent.organizer_id,
+        approval: {
+          dean_status: approval.dean_status,
+          registrar_status: approval.registrar_status,
+          vc_status: approval.vc_status,
+          rejection_reason: approval.rejection_reason
+        },
+        details: detailsMap[String(parentEvent._id)] || null,
+        ai_data: aiDataMap[String(parentEvent._id)] || null,
+        trending: trendingMap[String(parentEvent._id)] || null
+      }
+    }).filter(Boolean)
 
     console.timeEnd("API")
 
-    // Get total count for pagination
-    const totalCount = await approvalsCollection.countDocuments(matchConditions)
+    // Total count is already calculated at the top as 'totalCount'
 
     const payload = {
       items: events,

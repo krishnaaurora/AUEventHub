@@ -94,9 +94,13 @@ function VCPublishedEventsPage() {
               transition={{ delay: index * 0.1 }}
               className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow"
             >
-              {/* Event Poster Placeholder */}
-              <div className="aspect-video bg-slate-100 rounded-lg mb-4 flex items-center justify-center">
-                <span className="text-slate-400 text-sm">Event Poster</span>
+              {/* Event Poster */}
+              <div className="aspect-video bg-slate-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+                {event.poster ? (
+                  <img src={event.poster} alt={event.title} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-slate-400 text-sm">No Poster Available</span>
+                )}
               </div>
 
               {/* Event Info */}

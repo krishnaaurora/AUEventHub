@@ -3,13 +3,16 @@
         "ignoreDeprecations": "6.0",
         "baseUrl": ".",
         "paths": {
-            "@/*": [
-                "./src/*"
-            ]
+            "@/*": ["./*"]
         }
     },
     "include": [
         "app",
-        "src"
+        "src",
+        "components",
+        "hooks",
+        "services",
+        "lib",
+        "features"
     ]
 }

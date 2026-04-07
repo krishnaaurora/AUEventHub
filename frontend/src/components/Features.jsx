@@ -42,23 +42,20 @@ export default function Features() {
 
     useEffect(() => {
         if (isInView && messages.length === 0) {
-            setTimeout(() => {
-                setMessages([{
+            setMessages([
+                {
                     id: 1,
                     author: "ai",
                     text: "Hello! 👋 I'm RIYA, your AI assistant.",
                     avatar: "AI"
-                }]);
-            }, 600);
-
-            setTimeout(() => {
-                setMessages(prev => [...prev, {
+                },
+                {
                     id: 2,
                     author: "ai",
                     text: "I can help you navigate the platform. Click a suggestion below or type a question!",
                     avatar: "AI"
-                }]);
-            }, 1800);
+                }
+            ]);
         }
     }, [isInView]);
 
@@ -84,83 +81,69 @@ export default function Features() {
             avatar: "U"
         };
 
-        setMessages([...messages, newMessage]);
+        const tempStr = textToSend.toLowerCase();
+        let dummyContent = "I am Riya Event AI assistant. How can I help you today?";
 
-        // Simulate AI thinking animation
-        setMessages(prev => [...prev, {
+        const exactMatch = Object.keys(Q_A_MAP).find(q => q.toLowerCase() === textToSend.trim().toLowerCase());
+
+        if (exactMatch) {
+            dummyContent = Q_A_MAP[exactMatch];
+        } else if (tempStr.includes("create") || tempStr.includes("make") || tempStr.includes("add event")) {
+            dummyContent = "You can create an event by logging into the Organizer Dashboard and selecting Create Event. Fill in details such as event title, category, venue, date, and description. You can also generate the event description or approval letter using AI assistance.";
+        } else if (tempStr.includes("approv") || tempStr.includes("dean") || tempStr.includes("vc") || tempStr.includes("chancellor")) {
+            dummyContent = "Once an organizer submits an event, it is sent to the Dean for review. After approval from the Dean, the request is forwarded to the Vice Chancellor for final approval. Once approved, the event is automatically published on the student dashboard.";
+        } else if (tempStr.includes("register") || tempStr.includes("enroll") || tempStr.includes("join")) {
+            dummyContent = "Students can browse events on the dashboard and click the Register button. Their profile details are automatically filled in the registration form, making the process quick and seamless.";
+        } else if (tempStr.includes("ai ") || tempStr.includes("ai feature") || tempStr.includes("artificial") || tempStr.includes("bot")) {
+            dummyContent = "Aurora Hub includes AI assistance that can help generate event descriptions, approval request letters, and announcements. Organizers can also use voice input to quickly create event content.";
+        } else if (tempStr.includes("document") || tempStr.includes("store") || tempStr.includes("file") || tempStr.includes("attach")) {
+            dummyContent = "All event documents such as drafts, submitted letters, and approval documents are stored in the Documents section of the organizer dashboard. These files can be downloaded or shared via email or WhatsApp.";
+        } else if (tempStr.includes("guest") || tempStr.includes("speaker") || tempStr.includes("invite")) {
+            dummyContent = "Yes. While creating an event, organizers can add a Guest List section where guest names and details can be included.";
+        } else if (tempStr.includes("restrict") || tempStr.includes("department") || tempStr.includes("public") || tempStr.includes("private") || tempStr.includes("visib")) {
+            dummyContent = "Yes. Events can be set to Public or Department Only, allowing organizers to control who can view and participate in the event.";
+        } else if (tempStr.includes("statistic") || tempStr.includes("analytic") || tempStr.includes("report") || tempStr.includes("graphic")) {
+            dummyContent = "Yes. The Analytics dashboard provides insights such as total registrations, participation trends, and event performance metrics.";
+        } else if (tempStr.includes("previous") || tempStr.includes("champion") || tempStr.includes("data") || tempStr.includes("past") || tempStr.includes("hackathon") || tempStr.includes("football") || tempStr.includes("fest")) {
+            dummyContent = (
+                <div className="space-y-4 text-sm mt-1">
+                    <div>
+                        <strong>🧠 AI Innovation Hackathon 2025</strong><br />
+                        <em className="text-gray-600 dark:text-gray-500">Organized by: Coding Club | Date: 15–16 September 2025 | Venue: Innovation Lab</em><br />
+                        🏆 Champion: Neural Ninjas<br />
+                        🥈 Runner‑Up: CodeStorm<br />
+                        🥉 Second Runner‑Up: Algo Masters<br />
+                        <span className="text-gray-700 font-medium">Highlights:</span> 120+ participants, 30 teams, Machine Learning projects.
+                    </div>
+                    <div className="border-t border-gray-200/60 pt-2 border-dashed">
+                        <strong>⚽ Inter‑Department Football Championship 2025</strong><br />
+                        <em className="text-gray-600 dark:text-gray-500">Organized by: Sports Club | Date: 20 August 2025 | Venue: University Sports Ground</em><br />
+                        🏆 Champion: CSE Department<br />
+                        🥈 Runner‑Up: Mechanical Department<br />
+                        🥉 Third Place: MBA Department<br />
+                        <span className="text-gray-700 font-medium">Highlights:</span> 10 departments, 500+ attendees, Penalty shootout finale.
+                    </div>
+                    <div className="border-t border-gray-200/60 pt-2 border-dashed">
+                        <strong>🎭 Cultural Fest – Aurora Utsav 2025</strong><br />
+                        <em className="text-gray-600 dark:text-gray-500">Organized by: Cultural Committee | Date: 10 July 2025 | Venue: Open Air Auditorium</em><br />
+                        🏆 Champion: ECE Department<br />
+                        🥈 Runner‑Up: CSE Department<br />
+                        🥉 Third Place: Civil Department<br />
+                        <span className="text-gray-700 font-medium">Highlights:</span> Dance, music, 800+ participants, Celebrity guest.
+                    </div>
+                </div>
+            );
+        }
+
+        const replyMessage = {
             id: Date.now() + 1,
             author: "ai",
-            text: (
-                <div className="flex items-center gap-1.5 h-5 px-1">
-                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0 }} className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }} className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                    <motion.div animate={{ y: [0, -5, 0] }} transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }} className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
-                </div>
-            ),
-            avatar: "AI",
-            isTyping: true
-        }]);
-
-        setTimeout(() => {
-            const tempStr = textToSend.toLowerCase();
-            let dummyContent = "I am Riya Event AI assistant. How can I help you today?";
-
-            const exactMatch = Object.keys(Q_A_MAP).find(q => q.toLowerCase() === textToSend.trim().toLowerCase());
-
-            if (exactMatch) {
-                dummyContent = Q_A_MAP[exactMatch];
-            } else if (tempStr.includes("create") || tempStr.includes("make") || tempStr.includes("add event")) {
-                dummyContent = "You can create an event by logging into the Organizer Dashboard and selecting Create Event. Fill in details such as event title, category, venue, date, and description. You can also generate the event description or approval letter using AI assistance.";
-            } else if (tempStr.includes("approv") || tempStr.includes("dean") || tempStr.includes("vc") || tempStr.includes("chancellor")) {
-                dummyContent = "Once an organizer submits an event, it is sent to the Dean for review. After approval from the Dean, the request is forwarded to the Vice Chancellor for final approval. Once approved, the event is automatically published on the student dashboard.";
-            } else if (tempStr.includes("register") || tempStr.includes("enroll") || tempStr.includes("join")) {
-                dummyContent = "Students can browse events on the dashboard and click the Register button. Their profile details are automatically filled in the registration form, making the process quick and seamless.";
-            } else if (tempStr.includes("ai ") || tempStr.includes("ai feature") || tempStr.includes("artificial") || tempStr.includes("bot")) {
-                dummyContent = "Aurora Hub includes AI assistance that can help generate event descriptions, approval request letters, and announcements. Organizers can also use voice input to quickly create event content.";
-            } else if (tempStr.includes("document") || tempStr.includes("store") || tempStr.includes("file") || tempStr.includes("attach")) {
-                dummyContent = "All event documents such as drafts, submitted letters, and approval documents are stored in the Documents section of the organizer dashboard. These files can be downloaded or shared via email or WhatsApp.";
-            } else if (tempStr.includes("guest") || tempStr.includes("speaker") || tempStr.includes("invite")) {
-                dummyContent = "Yes. While creating an event, organizers can add a Guest List section where guest names and details can be included.";
-            } else if (tempStr.includes("restrict") || tempStr.includes("department") || tempStr.includes("public") || tempStr.includes("private") || tempStr.includes("visib")) {
-                dummyContent = "Yes. Events can be set to Public or Department Only, allowing organizers to control who can view and participate in the event.";
-            } else if (tempStr.includes("statistic") || tempStr.includes("analytic") || tempStr.includes("report") || tempStr.includes("graphic")) {
-                dummyContent = "Yes. The Analytics dashboard provides insights such as total registrations, participation trends, and event performance metrics.";
-            } else if (tempStr.includes("previous") || tempStr.includes("champion") || tempStr.includes("data") || tempStr.includes("past") || tempStr.includes("hackathon") || tempStr.includes("football") || tempStr.includes("fest")) {
-                dummyContent = (
-                    <div className="space-y-4 text-sm mt-1">
-                        <div>
-                            <strong>🧠 AI Innovation Hackathon 2025</strong><br />
-                            <em className="text-gray-600 dark:text-gray-500">Organized by: Coding Club | Date: 15–16 September 2025 | Venue: Innovation Lab</em><br />
-                            🏆 Champion: Neural Ninjas<br />
-                            🥈 Runner‑Up: CodeStorm<br />
-                            🥉 Second Runner‑Up: Algo Masters<br />
-                            <span className="text-gray-700 font-medium">Highlights:</span> 120+ participants, 30 teams, Machine Learning projects.
-                        </div>
-                        <div className="border-t border-gray-200/60 pt-2 border-dashed">
-                            <strong>⚽ Inter‑Department Football Championship 2025</strong><br />
-                            <em className="text-gray-600 dark:text-gray-500">Organized by: Sports Club | Date: 20 August 2025 | Venue: University Sports Ground</em><br />
-                            🏆 Champion: CSE Department<br />
-                            🥈 Runner‑Up: Mechanical Department<br />
-                            🥉 Third Place: MBA Department<br />
-                            <span className="text-gray-700 font-medium">Highlights:</span> 10 departments, 500+ attendees, Penalty shootout finale.
-                        </div>
-                        <div className="border-t border-gray-200/60 pt-2 border-dashed">
-                            <strong>🎭 Cultural Fest – Aurora Utsav 2025</strong><br />
-                            <em className="text-gray-600 dark:text-gray-500">Organized by: Cultural Committee | Date: 10 July 2025 | Venue: Open Air Auditorium</em><br />
-                            🏆 Champion: ECE Department<br />
-                            🥈 Runner‑Up: CSE Department<br />
-                            🥉 Third Place: Civil Department<br />
-                            <span className="text-gray-700 font-medium">Highlights:</span> Dance, music, 800+ participants, Celebrity guest.
-                        </div>
-                    </div>
-                );
-            }
-
-            setMessages(prev => prev.map(msg =>
-                msg.isTyping ? { ...msg, text: dummyContent, isTyping: false } : msg
-            ));
-            setCurrentSuggestions(getRandomSuggestions(2));
-        }, 1500);
+            text: dummyContent,
+            avatar: "AI"
+        };
+        
+        setMessages([...messages, newMessage, replyMessage]);
+        setCurrentSuggestions(getRandomSuggestions(2));
     };
 
     return (

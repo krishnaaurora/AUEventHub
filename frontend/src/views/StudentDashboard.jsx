@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
 import {
   CalendarDays, BookMarked, CheckCircle2, Award, Zap, Radio,
   MapPin, Clock, Users, Sparkles, X, Flame,
@@ -10,7 +9,6 @@ import {
 import { useEffect } from 'react'
 
 const iconMap = { calendar: CalendarDays, bookmark: BookMarked, check: CheckCircle2, award: Award }
-const fade = { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35 } }
 
 export default function StudentDashboard() {
     // TODO: Replace with actual student ID from auth context/session
@@ -110,10 +108,8 @@ export default function StudentDashboard() {
         {stats.map((s, i) => {
           const Icon = iconMap[s.icon] || CalendarDays
           return (
-            <motion.div
+            <div
               key={s.label}
-              {...fade}
-              transition={{ delay: i * 0.07 }}
               className={`rounded-2xl border ${s.border} ${s.bg} p-5 shadow-sm`}
             >
               <div className="flex items-center justify-between">
@@ -123,20 +119,16 @@ export default function StudentDashboard() {
                 <p className={`text-2xl font-bold ${s.text}`}>{s.value}</p>
               </div>
               <p className="mt-3 text-xs font-semibold text-slate-500">{s.label}</p>
-            </motion.div>
+            </div>
           )
         })}
       </section>
 
       {/* ── AI Recommended Events ─────────────────────── */}
-      <AnimatePresence>
-        {showAiRec && (
-          <motion.section
-            initial={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0, marginTop: 0, overflow: 'hidden' }}
-            transition={{ duration: 0.3 }}
-            className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
-          >
+      {showAiRec && (
+        <section
+          className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"
+        >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-600 flex items-center gap-1">
@@ -194,9 +186,9 @@ export default function StudentDashboard() {
                 </div>
               ))}
             </div>
-          </motion.section>
+          </section>
         )}
-      </AnimatePresence>
+      </div>
 
       {/* ── Ongoing + Notifications ───────────────────── */}
       <section className="grid gap-6 xl:grid-cols-[2fr_1fr]">
@@ -231,7 +223,6 @@ export default function StudentDashboard() {
               </div>
             ))
           )}
-        </div>
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -298,7 +289,7 @@ export default function StudentDashboard() {
             <p className="text-sm text-slate-500 col-span-3">No upcoming events in the catalog.</p>
           ) : (
             filteredUpcoming.map((event) => (
-              <motion.div key={event._id} layout className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+              <div key={event._id} className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
                 <div className="relative overflow-hidden rounded-2xl">
                   <img src="/assets/galleryimage3.png" alt={event.title} className="h-36 w-full object-cover transition-transform group-hover:scale-105" />
                 </div>
@@ -318,7 +309,7 @@ export default function StudentDashboard() {
                     Register
                   </button>
                 </div>
-              </motion.div>
+              </div>
             ))
           )}
         </div>
@@ -432,22 +423,15 @@ export default function StudentDashboard() {
       </section>
 
       {/* ── Event Detail Modal ────────────────────────── */}
-      <AnimatePresence>
-        {detailOpen && selectedEvent && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-            onClick={() => setDetailOpen(false)}
+      {detailOpen && selectedEvent && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          onClick={() => setDetailOpen(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
           >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="relative max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
-            >
               <button onClick={() => setDetailOpen(false)} className="absolute right-4 top-4 rounded-full border border-slate-200 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 z-10">
                 <X className="h-4 w-4" />
               </button>
@@ -525,10 +509,10 @@ export default function StudentDashboard() {
                   <button onClick={() => setDetailOpen(false)} className="rounded-full border border-slate-200 px-6 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50">Close</button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   )
 }
