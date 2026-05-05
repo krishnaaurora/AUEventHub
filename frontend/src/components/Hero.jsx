@@ -1,10 +1,8 @@
 "use client"
-
-"use client"
-
+ 
 import React, { useRef, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion } from 'framer-motion'
 import Navbar from './Navbar'
 import EntryPointButton from './ui/EntryPointButton'
 import { InteractiveGridPattern } from './ui/InteractiveGridPattern'
@@ -14,15 +12,9 @@ export default function Hero() {
   const [showButton, setShowButton] = useState(true)
   const lastScrollY = useRef(0)
 
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"]
-  })
-
-  // Smooth transitions based on scroll
-  const scale = useTransform(scrollYProgress, [0, 1], [1, 0.9])
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0])
-  const bgScale = useTransform(scrollYProgress, [0, 1], [1, 1.1])
+  // Smooth transitions based on scroll (REMOVED PARALLAX)
+  const scale = 1;
+  const opacity = 1;
 
   useEffect(() => {
     lastScrollY.current = window.scrollY
@@ -43,15 +35,15 @@ export default function Hero() {
   return (
     <section
       ref={containerRef}
-      className="relative h-[80vh] min-h-[600px] flex flex-col bg-white overflow-hidden sticky top-0"
+      className="relative h-screen min-h-[600px] flex flex-col bg-white overflow-hidden"
       style={{ zIndex: 0 }}
     >
+
+      {/* Background container */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute inset-0 bg-white" />
+        <InteractiveGridPattern containerRef={containerRef} cellSize={60} />
       </div>
-
-      {/* Interactive hover grid — each box lights up a different color */}
-      <InteractiveGridPattern containerRef={containerRef} cellSize={40} />
 
       <div className="relative z-20">
         <Navbar />
@@ -59,7 +51,7 @@ export default function Hero() {
 
       <motion.div
         style={{ scale, opacity }}
-        className="relative flex-1 flex flex-col items-center justify-center z-20 w-full px-6 -mt-16 pointer-events-none"
+        className="relative flex-1 flex flex-col items-center justify-center z-20 w-full px-6 mt-12 pointer-events-none"
       >
         {/* Stacked Centered Layout */}
         <div className="relative flex flex-col items-center justify-center w-full max-w-7xl mx-auto gap-4 md:gap-8">
@@ -82,28 +74,20 @@ export default function Hero() {
             transition={{ duration: 0.8 }}
             className="flex-shrink-0 relative flex flex-col items-center select-none pointer-events-none"
           >
-            <div className="flex items-baseline leading-[0.75] mb-2">
+            <div className="flex flex-col items-center mb-4">
               <span
-                className="text-[120px] md:text-[180px] lg:text-[240px] font-bold text-black drop-shadow-[0_0_40px_rgba(255,255,255,1)]"
+                className="text-[40px] md:text-[70px] lg:text-[90px] font-bold text-black drop-shadow-[0_0_40px_rgba(255,255,255,1)] text-center tracking-tight leading-none"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                A
-              </span>
-              <span
-                className="text-[120px] md:text-[180px] lg:text-[240px] font-bold text-black -ml-4 md:-ml-8 drop-shadow-[0_0_40px_rgba(255,255,255,1)]"
-                style={{ fontFamily: "'Playfair Display', serif" }}
-              >
-                U
+                AURORA UNIVERSITY
               </span>
             </div>
 
-            <div className="w-[120%] h-[3px] bg-black rounded-full" />
-
             <div
-              className="mt-4 text-lg md:text-2xl lg:text-4xl font-light text-black tracking-[0.6em] lg:tracking-[0.8em] uppercase drop-shadow-[0_0_25px_rgba(255,255,255,0.9)] text-center"
+              className="mt-4 text-lg md:text-2xl lg:text-3xl font-light text-black tracking-[0.6em] lg:tracking-[0.8em] uppercase drop-shadow-[0_0_25px_rgba(255,255,255,0.9)] text-center"
               style={{ fontFamily: "'Poppins', sans-serif" }}
             >
-              EVENTS HUB
+              EVENT HUB
             </div>
           </motion.div>
         </div>

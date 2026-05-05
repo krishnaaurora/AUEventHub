@@ -7,6 +7,10 @@ import {
   MapPin, Clock, Users, Sparkles, X, Flame,
 } from 'lucide-react'
 import { useEffect } from 'react'
+import { 
+  stats, recommendedEvents, trendingEvents, 
+  categories, registeredEvents, notifications 
+} from '../data/studentData'
 
 const iconMap = { calendar: CalendarDays, bookmark: BookMarked, check: CheckCircle2, award: Award }
 
@@ -93,11 +97,6 @@ export default function StudentDashboard() {
 
   if (loading) {
     return <div className="p-6">Loading...</div>
-  }
-
-  function openDetail(event) {
-    setSelectedEvent(event)
-    setDetailOpen(true)
   }
 
   return (
@@ -188,7 +187,6 @@ export default function StudentDashboard() {
             </div>
           </section>
         )}
-      </div>
 
       {/* ── Ongoing + Notifications ───────────────────── */}
       <section className="grid gap-6 xl:grid-cols-[2fr_1fr]">
@@ -224,8 +222,9 @@ export default function StudentDashboard() {
             ))
           )}
         </div>
+      </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold">Notifications</h3>
@@ -280,7 +279,7 @@ export default function StudentDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Upcoming</p>
-            <h2 className="mt-2 text-2xl font-semibold">Upcoming Events</h2>
+            <h2 className="mt-2 text-2xl font-semibold">Upcoming EVENT</h2>
           </div>
           <Link href="/student/events" prefetch className="rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:border-indigo-300">View Calendar</Link>
         </div>
@@ -348,7 +347,7 @@ export default function StudentDashboard() {
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-2xl font-semibold">My Registered Events</h2>
+              <h2 className="text-2xl font-semibold">My Registered EVENT</h2>
               <p className="text-sm text-slate-500">Track your registrations</p>
             </div>
             <Link href="/student/registered" prefetch className="text-xs font-semibold text-indigo-600 hover:underline">View All</Link>
@@ -512,7 +511,6 @@ export default function StudentDashboard() {
             </div>
           </div>
         )}
-      </div>
     </div>
   )
 }

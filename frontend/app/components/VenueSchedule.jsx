@@ -264,6 +264,14 @@ export default function VenueSchedulePage({ role = 'dean' }) {
         return start <= dayStr && end >= dayStr
     }).sort((a, b) => (a.start_time || '00:00').localeCompare(b.start_time || '00:00'))
 
+    // Pre-calculate events by hour for performance
+    const eventsByHour = {}
+    dayEvents.forEach(e => {
+      const hPrefix = (e.start_time || '00:').slice(0, 3)
+      if (!eventsByHour[hPrefix]) eventsByHour[hPrefix] = []
+      eventsByHour[hPrefix].push(e)
+    })
+
     const hours = Array.from({length: 24}, (_, i) => i)
 
     return (
@@ -271,7 +279,7 @@ export default function VenueSchedulePage({ role = 'dean' }) {
         <div className="divide-y divide-slate-100 h-[700px] overflow-y-auto relative">
            {hours.map(h => {
              const hourPrefix = h.toString().padStart(2, '0') + ':'
-             const evs = dayEvents.filter(e => (e.start_time || '').startsWith(hourPrefix))
+             const evs = eventsByHour[hourPrefix] || []
              return (
                <div key={h} className="flex min-h-[80px] hover:bg-slate-50/50 transition-colors group">
                  <div className="w-24 border-r border-slate-100 p-3 flex flex-col justify-center items-end text-xs text-slate-500 font-semibold uppercase bg-slate-50/30">
@@ -293,6 +301,23 @@ export default function VenueSchedulePage({ role = 'dean' }) {
   // Week View
   const renderWeekView = () => {
     const weekDays = getWeekDays(currentDate)
+    
+    // Pre-calculate events by day and hour for performance
+    const eventsBySlot = {} // key: "dayStr-hourPrefix"
+    filteredEvents.forEach(e => {
+      const eStart = e.start_date?.slice(0, 10)
+      const eEnd = e.end_date?.slice(0, 10) || eStart
+      const hPrefix = (e.start_time || '00:').slice(0, 3)
+      
+      weekDays.forEach(d => {
+        const dStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+        if (eStart <= dStr && eEnd >= dStr) {
+          const key = `${dStr}-${hPrefix}`
+          if (!eventsBySlot[key]) eventsBySlot[key] = []
+          eventsBySlot[key].push(e)
+        }
+      })
+    })
     
     return (
       <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
@@ -322,11 +347,7 @@ export default function VenueSchedulePage({ role = 'dean' }) {
                    </div>
                    {weekDays.map((d, i) => {
                       const dayStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-                      const dayEvents = filteredEvents.filter(e => {
-                         const start = e.start_date?.slice(0, 10)
-                         const end = e.end_date?.slice(0, 10) || start
-                         return start <= dayStr && end >= dayStr && (e.start_time || '').startsWith(hourPrefix)
-                      })
+                      const dayEvents = eventsBySlot[`${dayStr}-${hourPrefix}`] || []
                       return (
                          <div key={i} className="p-1.5 border-r border-slate-100 hover:bg-slate-50 transition flex flex-col gap-1">
                            {dayEvents.map(ev => <EventBadge key={ev._id} event={ev} onClick={setSelectedEvent} />)}
@@ -551,21 +572,12 @@ export default function VenueSchedulePage({ role = 'dean' }) {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[500px]">
          {/* Calendar */}
          <div className="lg:col-span-3">
-             <AnimatePresence mode="wait">
-                <motion.div
-                   key={view + currentDate.toISOString()}
-                   initial={{ opacity: 0, scale: 0.98, y: 10 }}
-                   animate={{ opacity: 1, scale: 1, y: 0 }}
-                   exit={{ opacity: 0, scale: 0.98, y: -10 }}
-                   transition={{ duration: 0.25, ease: "easeOut" }}
-                   className="w-full"
-                >
-                   {view === 'day' && renderDayView()}
-                   {view === 'week' && renderWeekView()}
-               {view === 'month' && renderMonthView()}
-               {view === 'year' && renderYearView()}
-            </motion.div>
-         </AnimatePresence>
+           <div className="w-full">
+             {view === 'day' && renderDayView()}
+             {view === 'week' && renderWeekView()}
+             {view === 'month' && renderMonthView()}
+             {view === 'year' && renderYearView()}
+           </div>
          </div>
 
          {/* Sidebar: Events List */}

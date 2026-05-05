@@ -45,10 +45,10 @@ export async function generateApprovalLetter(payload) {
 }
 
 /**
- * Chat with RIYA AI assistant.
+ * Chat with TIYA AI assistant.
  * Flask: POST /api/ai/chat
  */
-export async function chatWithRiya(message) {
+export async function chatWithTiya(message) {
   const res = await fetch(`${FLASK_URL}/api/ai/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

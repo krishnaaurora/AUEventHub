@@ -178,6 +178,7 @@ export async function POST(request) {
       })
     }
   } catch (error) {
+    console.error('[REGISTRAR ACTION ERROR]', error)
     return NextResponse.json(
       { message: 'Failed to process registrar action.', detail: error.message },
       { status: 500 }

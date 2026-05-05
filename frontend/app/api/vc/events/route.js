@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import {
   ensureStudentEventCollections,
@@ -8,7 +9,6 @@ import {
   getEventTrendingCollection,
 } from '../../_lib/db'
 import { requireVCAccess } from '../_lib/auth'
-import redis from '../../../../lib/redis'
 
 function toPositiveInt(value, fallback) {
   const num = Number.parseInt(value, 10)
@@ -25,16 +25,6 @@ export async function GET(request) {
     const limit = toPositiveInt(searchParams.get('limit'), 50)
     const offset = toPositiveInt(searchParams.get('offset'), 0)
 
-    const cacheKey = `events:vc:${filter}:${limit}:${offset}`
-
-    if (redis && redis.isReady) {
-      const cached = await redis.get(cacheKey)
-      if (cached) {
-        console.log("⚡ Redis HIT")
-        return NextResponse.json(JSON.parse(cached))
-      }
-    }
-    console.log("❌ Redis MISS")
     console.time("API")
 
     await ensureStudentEventCollections()
@@ -162,10 +152,6 @@ export async function GET(request) {
       offset,
     }
 
-    // Store in Redis
-    if (redis && redis.isReady) {
-      await redis.setEx(cacheKey, 20, JSON.stringify(payload))
-    }
 
     return NextResponse.json(payload)
   } catch (error) {

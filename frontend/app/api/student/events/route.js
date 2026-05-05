@@ -1,6 +1,5 @@
 import { ensureStudentEventCollections, getEventsCollection } from '../../_lib/db'
 import { emitSocketEvent } from '../../../../server/socket'
-import redis from '../../../../lib/redis'
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 
@@ -49,14 +48,6 @@ export async function GET(request) {
       ]
     }
 
-    const cacheKey = `events_student_${q}_${category}_${status}_${organizerId}_${organizer}_${page}_${limit}`
-    try {
-      const cached = await redis.get(cacheKey)
-      if (cached) return NextResponse.json(JSON.parse(cached))
-    } catch (e) {
-      // ignore
-    }
-
     console.time("API")
 
     const skip = (page - 1) * limit
@@ -81,12 +72,6 @@ export async function GET(request) {
     }
 
     console.timeEnd("API")
-
-    try {
-      await redis.set(cacheKey, JSON.stringify(responseData), "EX", 30)
-    } catch (e) {
-      // ignore
-    }
 
     return NextResponse.json(responseData)
   } catch (error) {
@@ -207,13 +192,6 @@ export async function POST(request) {
     emitSocketEvent('dashboard:refresh', { scope: 'student' })
     emitSocketEvent('dashboard:refresh', { scope: 'organizer' }, 'role:organizer')
 
-    // Invalidate caches
-    try {
-      if (redis && redis.isReady) {
-        const keys = await redis.keys('events_*')
-        if (keys.length > 0) await redis.del(keys)
-      }
-    } catch (e) { /* silent */ }
 
     return NextResponse.json(
       {
@@ -283,13 +261,6 @@ export async function PUT(request) {
       return NextResponse.json({ message: 'Event not found.' }, { status: 404 })
     }
 
-    // Invalidate caches
-    try {
-      if (redis && redis.isReady) {
-        const keys = await redis.keys('events_*')
-        if (keys.length > 0) await redis.del(keys)
-      }
-    } catch (e) { /* silent */ }
 
     emitSocketEvent('dashboard:refresh', { scope: 'student' })
     emitSocketEvent('dashboard:refresh', { scope: 'organizer' })

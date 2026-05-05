@@ -58,8 +58,8 @@ function VCPublishedEventsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Published Events</h1>
-          <p className="text-sm text-slate-500 mt-1">Events approved and live to students</p>
+          <h1 className="text-2xl font-bold text-slate-900">Published EVENT</h1>
+          <p className="text-sm text-slate-500 mt-1">EVENT approved and live to students</p>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />

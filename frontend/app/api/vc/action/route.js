@@ -9,7 +9,6 @@ import {
 import { ensureStudentTransactionTables, getPool } from '../../_lib/pg'
 import { emitSocketEvent } from '../../../../server/socket'
 import { requireVCAccess } from '../_lib/auth'
-import redis from '../../../../lib/redis'
 
 export async function POST(request) {
   try {
@@ -126,20 +125,6 @@ export async function POST(request) {
       } catch (mongoError) {
         console.error('[VC ACTION] Mongo Notification Error:', mongoError.message)
       }
-    }
-
-    // Invalidate Redis caches so students see the newly published event
-    try {
-      if (redis && redis.isReady) {
-        const keysToDelete = [
-          ...await redis.keys('events:vc:*'),
-          ...await redis.keys('events_student_*'),
-          ...await redis.keys('events_dean_*'),
-        ]
-        if (keysToDelete.length > 0) await redis.del(keysToDelete)
-      }
-    } catch (cacheErr) {
-      console.error('[VC ACTION] Cache invalidation error (non-critical):', cacheErr.message)
     }
 
     // Emit socket events for real-time updates

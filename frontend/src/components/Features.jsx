@@ -35,6 +35,7 @@ export default function Features() {
     const [messages, setMessages] = useState(INITIAL_MESSAGES);
     const [currentSuggestions, setCurrentSuggestions] = useState(() => getRandomSuggestions(2));
     const [hasInteracted, setHasInteracted] = useState(false);
+    const [inputValue, setInputValue] = useState("");
     const scrollRef = useRef(null);
     const messagesEndRef = useRef(null);
     const chatContainerRef = useRef(null);
@@ -147,7 +148,7 @@ export default function Features() {
     };
 
     return (
-        <section id="features" className="relative min-h-[800px] py-16 bg-white overflow-hidden flex flex-col items-center">
+        <section id="features" className="relative min-h-[600px] py-16 md:py-24 bg-white overflow-hidden flex flex-col items-center">
             {/* Radial Gradient Background */}
             <div
                 className="absolute inset-0 z-0"
@@ -162,11 +163,11 @@ export default function Features() {
 
             <div className="relative z-10 w-full max-w-5xl px-6 flex flex-col items-center">
                 {/* Header */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-10">
                     <motion.h2
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
-                        className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight"
+                        className="text-3xl md:text-5xl font-bold text-gray-900 tracking-tight"
                         style={{ fontFamily: "'Satoshi', sans-serif" }}
                     >
                         Chat .. <br />
@@ -184,16 +185,16 @@ export default function Features() {
                     className="w-full max-w-3xl bg-transparent flex flex-col items-center gap-6"
                 >
                     {/* Glass Container for Chat */}
-                    <div className="w-full max-w-2xl bg-transparent border border-black rounded-3xl overflow-hidden flex flex-col relative">
+                    <div className="w-full max-w-xl bg-white/90 dark:bg-gray-900/90 border border-gray-200 dark:border-gray-800 rounded-3xl overflow-hidden flex flex-col relative shadow-2xl backdrop-blur-md">
 
-                        {/* Chat Area - Increased Size */}
+                        {/* Chat Area - Decreased Size */}
                         <div
                             ref={scrollRef}
                             style={{
                                 maskImage: "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)",
                                 WebkitMaskImage: "linear-gradient(to bottom, transparent, black 5%, black 95%, transparent)",
                             }}
-                            className="h-[400px] md:h-[500px] overflow-y-auto p-4 md:p-5 pb-8 space-y-4 custom-scrollbar bg-transparent overscroll-contain"
+                            className="h-[320px] md:h-[420px] overflow-y-auto p-4 md:p-5 pb-8 space-y-4 custom-scrollbar bg-white/50 dark:bg-black/20 overscroll-contain"
                             data-lenis-prevent
                         >
                             <AnimatePresence initial={false}>
@@ -260,6 +261,33 @@ export default function Features() {
                             )}
                         </div>
 
+                        {/* Floating Text Input Box */}
+                        <div className="p-4 relative z-20">
+                            <motion.div 
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                className="flex items-center gap-2 bg-white dark:bg-gray-800 p-2 rounded-2xl border-2 border-blue-500/20 shadow-[0_10px_30px_rgba(0,0,0,0.1)] focus-within:border-blue-500/50 transition-all duration-300"
+                            >
+                                <input
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && (handleSendMessage(inputValue), setInputValue(""))}
+                                    placeholder="Ask RIYA about features..."
+                                    className="flex-1 bg-transparent border-none outline-none px-3 py-2 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400"
+                                />
+                                <button
+                                    onClick={() => {
+                                        handleSendMessage(inputValue);
+                                        setInputValue("");
+                                    }}
+                                    disabled={!inputValue.trim()}
+                                    className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white p-2 rounded-xl transition-all shadow-md active:scale-95"
+                                >
+                                    <Send size={18} />
+                                </button>
+                            </motion.div>
+                        </div>
                     </div>
                 </motion.div>
             </div>

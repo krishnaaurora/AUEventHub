@@ -8,7 +8,6 @@ import {
   getEventTrendingCollection,
 } from '../../_lib/db'
 import { requireDeanAccess } from '../_lib/auth'
-import redis from '../../../../lib/redis'
 
 function toPositiveInt(value, fallback) {
   const num = Number.parseInt(value, 10)
@@ -69,29 +68,10 @@ export async function GET(request) {
       statusQuery = { status: 'rejected' }
     }
 
-    const cacheKey = `events_dean_${filter}_${page}_${limit}`
-    
-    // 1. Try Cache First
-    if (redis && redis.isReady) {
-      const cached = await redis.get(cacheKey)
-      if (cached) {
-        // Return instantly
-        const parsed = JSON.parse(cached)
-        // BACKGROUND REFRESH (Async)
-        // Only refresh if cache is older than 30s (we store metadata in the cache for this)
-        if (!parsed._timestamp || Date.now() - parsed._timestamp > 30000) {
-          console.log("♻️ Background Refresh Triggered")
-          // No await here
-          fetchEventsAndCache(eventsCol, statusQuery, filter, page, limit, cacheKey)
-        }
-        return NextResponse.json(parsed)
-      }
-    }
-
-    // 2. Cold Start: Fetch fresh
-    console.time("API_COLD_FETCH")
-    const responseData = await fetchEventsAndCache(eventsCol, statusQuery, filter, page, limit, cacheKey)
-    console.timeEnd("API_COLD_FETCH")
+    // Fetch fresh
+    console.time("API_FETCH")
+    const responseData = await fetchEventsDirect(eventsCol, statusQuery, filter, page, limit)
+    console.timeEnd("API_FETCH")
 
     return NextResponse.json(responseData)
   } catch (error) {
@@ -102,8 +82,7 @@ export async function GET(request) {
   }
 }
 
-// Extracted for re-use in background update
-async function fetchEventsAndCache(eventsCol, statusQuery, filter, page, limit, cacheKey) {
+async function fetchEventsDirect(eventsCol, statusQuery, filter, page, limit) {
   const pipeline = [
     { $match: statusQuery },
     { $sort: { created_at: -1, _id: -1 } },
@@ -146,17 +125,5 @@ async function fetchEventsAndCache(eventsCol, statusQuery, filter, page, limit, 
     approval: e.approval || null,
   }))
 
-  const responseData = { 
-    items, 
-    _timestamp: Date.now(), 
-    _source: 'cache' 
-  }
-
-  try {
-    if (redis && redis.isReady) {
-      await redis.set(cacheKey, JSON.stringify(responseData), "EX", 60)
-    }
-  } catch (e) { /* ignore */ }
-
-  return responseData
+  return { items }
 }

@@ -39,9 +39,9 @@ function getInitials(name) {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dean/dashboard' },
   { icon: ClipboardCheck, label: 'Pending Approvals', href: '/dean/pending' },
-  { icon: CheckCircle2, label: 'Approved Events', href: '/dean/approved' },
-  { icon: XCircle, label: 'Rejected Events', href: '/dean/rejected' },
-  { icon: History, label: 'Event History', href: '/dean/history' },
+  { icon: CheckCircle2, label: 'Approved EVENT', href: '/dean/approved' },
+  { icon: XCircle, label: 'Rejected EVENT', href: '/dean/rejected' },
+  { icon: History, label: 'EVENT History', href: '/dean/history' },
   { icon: CalendarDays, label: 'Venue Schedule', href: '/dean/venue-schedule' },
 ]
 

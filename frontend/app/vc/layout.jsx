@@ -24,8 +24,8 @@ import getSocket from '../../lib/socket'
 
 const navigation = [
   { name: 'Dashboard', href: '/vc/dashboard', icon: LayoutDashboard },
-  { name: 'Published Events', href: '/vc/published', icon: CheckCircle2 },
-  { name: 'Rejected Events', href: '/vc/rejected', icon: XCircle },
+  { name: 'Published EVENT', href: '/vc/published', icon: CheckCircle2 },
+  { name: 'Rejected EVENT', href: '/vc/rejected', icon: XCircle },
   { name: 'Analytics', href: '/vc/analytics', icon: BarChart3 },
   { name: 'Venue Schedule', href: '/vc/venue-schedule', icon: CalendarDays },
 ]

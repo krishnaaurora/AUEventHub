@@ -23,9 +23,8 @@ const STATUS_OPTIONS = [
   { value: 'pending_dean', label: 'Pending Dean' },
   { value: 'pending_registrar', label: 'Pending Registrar' },
   { value: 'pending_vc', label: 'Pending VC' },
-  { value: 'published', label: 'Published' },
+  { value: 'published', label: 'Approved & Published' },
   { value: 'completed', label: 'Completed' },
-  { value: 'approved', label: 'Approved' },
   { value: 'rejected', label: 'Rejected' },
 ]
 
@@ -56,7 +55,12 @@ export default function MyEventsPage() {
 
   async function loadEvents() {
     try {
-      const res = await fetch('/api/student/events?limit=500', { cache: 'no-store' })
+      const qs = new URLSearchParams()
+      qs.set('limit', '500')
+      if (organizerId) qs.set('organizer_id', organizerId)
+      else if (organizerName) qs.set('organizer', organizerName)
+
+      const res = await fetch(`/api/student/events?${qs.toString()}`, { cache: 'no-store' })
       const json = await res.json()
       const all = Array.isArray(json.items) ? json.items : []
       const mine = organizerId
@@ -115,7 +119,11 @@ export default function MyEventsPage() {
   useEffect(() => {
     let result = events
     if (statusFilter) {
-      result = result.filter((e) => e.status === statusFilter)
+      if (statusFilter === 'published') {
+        result = result.filter((e) => e.status === 'published' || e.status === 'approved')
+      } else {
+        result = result.filter((e) => e.status === statusFilter)
+      }
     }
     if (search.trim()) {
       const q = search.toLowerCase()
@@ -189,9 +197,9 @@ export default function MyEventsPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">Event Management</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">My Events</h1>
-        <p className="mt-1 text-sm text-slate-500">Track all your events and their approval status.</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-600">EVENT Management</p>
+        <h1 className="mt-1 text-2xl font-bold text-slate-900">My EVENT</h1>
+        <p className="mt-1 text-sm text-slate-500">Track all your EVENT and their approval status.</p>
       </div>
 
       {/* Filters */}
@@ -201,7 +209,7 @@ export default function MyEventsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search events..."
+            placeholder="Search EVENT..."
             className="w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 py-2.5 text-sm outline-none focus:border-indigo-400 transition"
           />
         </div>
@@ -231,7 +239,7 @@ export default function MyEventsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left px-5 py-3 font-semibold text-slate-600">Event</th>
+                  <th className="text-left px-5 py-3 font-semibold text-slate-600">EVENT</th>
                   <th className="text-left px-5 py-3 font-semibold text-slate-600">Venue</th>
                   <th className="text-left px-5 py-3 font-semibold text-slate-600">Date</th>
                   <th className="text-left px-5 py-3 font-semibold text-slate-600">Status</th>

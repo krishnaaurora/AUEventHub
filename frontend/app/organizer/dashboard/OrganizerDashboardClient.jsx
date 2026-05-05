@@ -36,7 +36,7 @@ function getApprovalProgress(item) {
 }
 
 const statCards = [
-  { key: 'total', label: 'Total Events', icon: CalendarDays, color: 'indigo' },
+  { key: 'total', label: 'Total EVENT', icon: CalendarDays, color: 'indigo' },
   { key: 'pending', label: 'Pending Approval', icon: Clock, color: 'amber' },
   { key: 'approved', label: 'Approved', icon: CheckCircle2, color: 'emerald' },
   { key: 'rejected', label: 'Rejected', icon: XCircle, color: 'rose' },
@@ -53,7 +53,7 @@ const colorMap = {
 }
 
 const quickActions = [
-  { label: 'Create Event', href: '/organizer/create-event', icon: PlusSquare, desc: 'Launch a new event' },
+  { label: 'Create EVENT', href: '/organizer/create-event', icon: PlusSquare, desc: 'Launch a new EVENT' },
   { label: 'View Analytics', href: '/organizer/analytics', icon: BarChart3, desc: 'See event insights' },
   { label: 'Scan Attendance', href: '/organizer/attendance', icon: QrCode, desc: 'Mark student attendance' },
 ]
@@ -140,7 +140,7 @@ export default function OrganizerDashboardClient({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-indigo-500" />
-            Upcoming Events
+            Upcoming EVENT
           </h2>
           <Link href="/organizer/my-events" className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
             View All

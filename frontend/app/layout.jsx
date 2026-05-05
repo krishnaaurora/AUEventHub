@@ -4,8 +4,8 @@ import '../src/index.css'
 import 'lenis/dist/lenis.css'
 
 export const metadata = {
-  title: 'AU Event Hub',
-  description: 'University events landing and authentication portal'
+  title: 'Aurora University Event Hub',
+  description: 'University EVENT landing and authentication portal'
 }
 
 export default function RootLayout({ children }) {

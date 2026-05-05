@@ -24,10 +24,10 @@ import getSocket from '../../lib/socket'
 
 const navigation = [
   { name: 'Dashboard', href: '/registrar/dashboard', icon: LayoutDashboard },
-  { name: 'Dean Approved Events', href: '/registrar/dean-approved', icon: CheckCircle2 },
+  { name: 'Dean Approved EVENT', href: '/registrar/dean-approved', icon: CheckCircle2 },
   { name: 'Venue Schedule', href: '/registrar/venue-schedule', icon: Calendar },
   { name: 'Registrar Approved', href: '/registrar/approved', icon: CheckCircle2 },
-  { name: 'Rejected Events', href: '/registrar/rejected', icon: XCircle },
+  { name: 'Rejected EVENT', href: '/registrar/rejected', icon: XCircle },
   { name: 'Analytics', href: '/registrar/analytics', icon: BarChart3 },
 ]
 
@@ -186,7 +186,7 @@ export default function RegistrarLayout({ children }) {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search events..."
+                placeholder="Search EVENT..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-64 rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm placeholder:text-slate-400 focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-100"

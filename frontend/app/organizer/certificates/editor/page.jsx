@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Draggable from 'react-draggable'
 import { 
   ArrowLeft, Save, Upload, Info, 
-  Type, Calendar, Award, Loader2, Sparkles, X
+  Type, Calendar, Award, Loader2, Sparkles, X,
+  Image as ImageIcon, Fingerprint, ChevronUp, ChevronDown, Move, Maximize2
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -15,11 +16,32 @@ export default function CertificateEditorPage() {
   const eventId = searchParams.get('eventId')
 
   const [templateImg, setTemplateImg] = useState('')
+  const [signatureImg, setSignatureImg] = useState('')
+  const [logoImg, setLogoImg] = useState('')
+  const [showGuides, setShowGuides] = useState(true)
+
+  const defaultStyle = {
+    fontSize: 30,
+    fontFamily: 'serif',
+    letterSpacing: 0,
+    lineHeight: 1.2,
+    fontWeight: '700',
+    color: '#000000',
+    shadow: false,
+    outline: false,
+    width: 150,
+    height: 60
+  }
+
   const [positions, setPositions] = useState({
-    name: { x: 400, y: 300, fontSize: 40 },
-    event: { x: 400, y: 400, fontSize: 28 },
-    date: { x: 400, y: 500, fontSize: 20 }
+    name: { ...defaultStyle, x: 400, y: 300, fontSize: 44, fontFamily: 'serif' },
+    event: { ...defaultStyle, x: 400, y: 400, fontSize: 28, fontFamily: 'sans-serif' },
+    date: { ...defaultStyle, x: 400, y: 500, fontSize: 20, fontFamily: 'serif' },
+    id: { ...defaultStyle, x: 800, y: 50, fontSize: 12, fontFamily: 'monospace', fontWeight: '400' },
+    signature: { x: 600, y: 550, width: 150, height: 80 },
+    logo: { x: 100, y: 50, width: 100, height: 100 }
   })
+
   const [library, setLibrary] = useState([])
   const [showLibrary, setShowLibrary] = useState(false)
   const [activeElement, setActiveElement] = useState('name')
@@ -28,8 +50,44 @@ export default function CertificateEditorPage() {
   const [eventTitle, setEventTitle] = useState('Certificate of Participation')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isResizing, setIsResizing] = useState(false)
 
   const containerRef = useRef(null)
+  const elementsScrollRef = useRef(null)
+
+  // Custom Resize Logic
+  useEffect(() => {
+    if (!isResizing) return
+
+    const handleMouseMove = (e) => {
+      if (!activeElement || !['logo', 'signature'].includes(activeElement)) return
+      
+      const container = containerRef.current
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / (rect.width / 1000)
+      const y = (e.clientY - rect.top) / (rect.height / 707)
+
+      const elementPos = positions[activeElement]
+      const newWidth = Math.max(20, x - elementPos.x)
+      const newHeight = Math.max(20, y - elementPos.y)
+
+      setPositions(prev => ({
+        ...prev,
+        [activeElement]: { ...prev[activeElement], width: newWidth, height: newHeight }
+      }))
+    }
+
+    const handleMouseUp = () => setIsResizing(false)
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isResizing, activeElement, positions])
 
   // Load existing template and library
   useEffect(() => {
@@ -47,7 +105,12 @@ export default function CertificateEditorPage() {
         if (res.ok) {
           const data = await res.json()
           if (data.image_url) setTemplateImg(data.image_url)
-          if (data.settings) setPositions(data.settings)
+          if (data.settings) {
+            setPositions(prev => ({
+              ...prev,
+              ...data.settings
+            }))
+          }
         }
 
         // Load library
@@ -73,18 +136,35 @@ export default function CertificateEditorPage() {
 
   const handleApplyLibraryTemplate = (template) => {
     setTemplateImg(template.image_url)
-    if (template.settings) setPositions(template.settings)
+    if (template.settings) {
+      setPositions(prev => ({
+        ...prev,
+        ...template.settings
+      }))
+    }
     setShowLibrary(false)
     setSuccess('Applied library template!')
     setTimeout(() => setSuccess(''), 2000)
   }
 
-  const handleImageUpload = (e) => {
+  const handleImageUpload = (e, type = 'template') => {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = (ev) => setTemplateImg(ev.target?.result)
+    reader.onload = (ev) => {
+      const result = ev.target?.result
+      if (type === 'template') setTemplateImg(result)
+      else if (type === 'signature') setSignatureImg(result)
+      else if (type === 'logo') setLogoImg(result)
+    }
     reader.readAsDataURL(file)
+  }
+
+  const scrollElements = (direction) => {
+    if (elementsScrollRef.current) {
+      const scrollAmount = direction === 'up' ? -100 : 100
+      elementsScrollRef.current.scrollBy({ top: scrollAmount, behavior: 'smooth' })
+    }
   }
 
   const handleSave = async () => {
@@ -128,10 +208,10 @@ export default function CertificateEditorPage() {
     setActiveElement(field)
   }
 
-  const updateFontSize = (size) => {
+  const updateStyle = (field, key, value) => {
     setPositions(prev => ({
       ...prev,
-      [activeElement]: { ...prev[activeElement], fontSize: parseInt(size) }
+      [field]: { ...prev[field], [key]: value }
     }))
   }
 
@@ -207,56 +287,149 @@ export default function CertificateEditorPage() {
             </label>
           </div>
 
-          <div className="space-y-4">
-             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Dynamic Elements</p>
-             <p className="text-xs text-slate-500 mb-4 bg-amber-50 p-3 rounded-2xl border border-amber-100 flex gap-2">
-                <Info className="h-4 w-4 shrink-0 text-amber-600" />
-                Select an element to resize or drag it.
-             </p>
-
-             {[
-               { id: 'name', label: 'Student Name', icon: Type, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-               { id: 'event', label: 'Event Name', icon: Award, color: 'text-violet-600', bg: 'bg-violet-50' },
-               { id: 'date', label: 'Issue Date', icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' }
-             ].map(item => (
-               <div 
-                 key={item.id} 
-                 onClick={() => setActiveElement(item.id)}
-                 className={`rounded-2xl border ${activeElement === item.id ? 'border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-500/10' : 'border-slate-100 bg-white'} p-4 flex flex-col gap-3 shadow-sm cursor-pointer transition-all`}
-               >
-                  <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-xl ${item.bg} flex items-center justify-center ${item.color}`}>
-                       <item.icon className="h-4 w-4" />
-                    </div>
-                    <div className="flex-1">
-                       <p className="text-sm font-bold text-slate-800">{item.label}</p>
-                       <p className="text-[10px] text-slate-400 font-mono">X: {Math.round(positions[item.id].x)} Y: {Math.round(positions[item.id].y)}</p>
-                    </div>
-                  </div>
-
-                  {activeElement === item.id && (
-                    <div className="pt-2 border-t border-slate-100 mt-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">Text Size</p>
-                        <p className="text-[10px] font-black text-indigo-600">{positions[item.id].fontSize}px</p>
+          <div className="flex flex-col flex-1 min-h-0">
+             <div className="flex items-center justify-between mb-3 px-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Dynamic Elements</p>
+                <div className="flex gap-1">
+                  <button onClick={() => scrollElements('up')} className="p-1 rounded-md hover:bg-slate-100 text-slate-400"><ChevronUp className="h-4 w-4" /></button>
+                  <button onClick={() => scrollElements('down')} className="p-1 rounded-md hover:bg-slate-100 text-slate-400"><ChevronDown className="h-4 w-4" /></button>
+                </div>
+             </div>
+             
+             <div 
+               ref={elementsScrollRef}
+               className="space-y-3 overflow-y-auto pr-2 custom-scrollbar flex-1"
+             >
+                {[
+                  { id: 'name', label: 'Student Name', icon: Type, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                  { id: 'event', label: 'Event Name', icon: Award, color: 'text-violet-600', bg: 'bg-violet-50' },
+                  { id: 'date', label: 'Issue Date', icon: Calendar, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                  { id: 'id', label: 'Unique ID', icon: Fingerprint, color: 'text-amber-600', bg: 'bg-amber-50' },
+                  { id: 'logo', label: 'University Logo', icon: ImageIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
+                  { id: 'signature', label: 'Signature', icon: Sparkles, color: 'text-rose-600', bg: 'bg-rose-50' }
+                ].map(item => (
+                  <div 
+                    key={item.id} 
+                    onClick={() => setActiveElement(item.id)}
+                    className={`rounded-2xl border ${activeElement === item.id ? 'border-indigo-600 bg-indigo-50/30 ring-2 ring-indigo-500/10' : 'border-slate-100 bg-white'} p-4 flex flex-col gap-3 shadow-sm cursor-pointer transition-all`}
+                  >
+                      <div className="flex items-center gap-3">
+                        <div className={`h-8 w-8 rounded-xl ${item.bg} flex items-center justify-center ${item.color}`}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-slate-800">{item.label}</p>
+                          <p className="text-[10px] text-slate-400 font-mono">Pos: {Math.round(positions[item.id]?.x || 0)}, {Math.round(positions[item.id]?.y || 0)}</p>
+                        </div>
                       </div>
-                      <input 
-                        type="range" 
-                        min="10" 
-                        max="100" 
-                        value={positions[item.id].fontSize}
-                        onChange={(e) => updateFontSize(e.target.value)}
-                        className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                  )}
-               </div>
-             ))}
+
+                      {activeElement === item.id && (
+                        <div className="pt-3 border-t border-slate-100 mt-1 space-y-4">
+                          {/* Image specific controls */}
+                          {(item.id === 'logo' || item.id === 'signature') ? (
+                            <div className="space-y-3">
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                id={`upload-${item.id}`} 
+                                className="hidden" 
+                                onChange={(e) => handleImageUpload(e, item.id)} 
+                              />
+                              <label htmlFor={`upload-${item.id}`} className="w-full py-2 flex items-center justify-center gap-2 border border-dashed border-slate-200 rounded-xl text-[10px] font-bold text-slate-500 hover:bg-slate-50 cursor-pointer">
+                                <Upload className="h-3 w-3" /> Upload {item.label}
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-tighter">Width</p>
+                                  <input type="number" value={positions[item.id]?.width || 100} onChange={(e) => updateStyle(item.id, 'width', parseInt(e.target.value))} className="w-full text-xs p-1.5 border border-slate-100 rounded-lg outline-none focus:border-indigo-300" />
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-tighter">Height</p>
+                                  <input type="number" value={positions[item.id]?.height || 60} onChange={(e) => updateStyle(item.id, 'height', parseInt(e.target.value))} className="w-full text-xs p-1.5 border border-slate-100 rounded-lg outline-none focus:border-indigo-300" />
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Text specific controls */
+                            <div className="space-y-4">
+                              <div>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase">Font Family</p>
+                                </div>
+                                <select 
+                                  value={positions[item.id]?.fontFamily || 'serif'} 
+                                  onChange={(e) => updateStyle(item.id, 'fontFamily', e.target.value)}
+                                  className="w-full text-xs p-2 border border-slate-100 rounded-xl bg-white outline-none focus:ring-2 focus:ring-indigo-500/20"
+                                >
+                                  <option value="'Playfair Display', serif">Playfair Display (Serif)</option>
+                                  <option value="'Inter', sans-serif">Inter (Modern)</option>
+                                  <option value="'Bookman Old Style', serif">Bookman Old Style</option>
+                                  <option value="monospace">Monospace (Code)</option>
+                                  <option value="'Dancing Script', cursive">Dancing Script (Cursive)</option>
+                                </select>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Letter Spacing</p>
+                                  <input type="number" value={positions[item.id]?.letterSpacing || 0} onChange={(e) => updateStyle(item.id, 'letterSpacing', parseFloat(e.target.value))} step="0.1" className="w-full text-xs p-1.5 border border-slate-100 rounded-lg outline-none focus:border-indigo-300" />
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Line Height</p>
+                                  <input type="number" value={positions[item.id]?.lineHeight || 1.2} onChange={(e) => updateStyle(item.id, 'lineHeight', parseFloat(e.target.value))} step="0.1" className="w-full text-xs p-1.5 border border-slate-100 rounded-lg outline-none focus:border-indigo-300" />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => updateStyle(item.id, 'shadow', !positions[item.id]?.shadow)}
+                                  className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${positions[item.id]?.shadow ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-50 text-slate-400'}`}
+                                >
+                                  Shadow
+                                </button>
+                                <button 
+                                  onClick={() => updateStyle(item.id, 'outline', !positions[item.id]?.outline)}
+                                  className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${positions[item.id]?.outline ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-50 text-slate-400'}`}
+                                >
+                                  Outline
+                                </button>
+                              </div>
+
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase">Text Size</p>
+                                  <p className="text-[10px] font-black text-indigo-600">{positions[item.id]?.fontSize || 30}px</p>
+                                </div>
+                                <input 
+                                  type="range" 
+                                  min="8" 
+                                  max="120" 
+                                  value={positions[item.id]?.fontSize || 30}
+                                  onChange={(e) => updateStyle(item.id, 'fontSize', parseInt(e.target.value))}
+                                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                  </div>
+                ))}
+             </div>
           </div>
 
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3">Saved Templates</p>
+          <div className="pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Layout Tools</p>
+              <button 
+                onClick={() => setShowGuides(!showGuides)}
+                className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold transition-all ${showGuides ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-50 text-slate-400 border border-slate-100'}`}
+              >
+                {showGuides ? 'Guides On' : 'Guides Off'}
+              </button>
+            </div>
+            
             <button 
               onClick={() => setShowLibrary(true)}
               className="w-full flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:shadow-lg hover:shadow-slate-200/50 transition-all group"
@@ -404,56 +577,95 @@ export default function CertificateEditorPage() {
                {/* Background Template */}
                <img src={templateImg} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
 
+               {/* Safe Area / Margin Guides */}
+               {showGuides && (
+                 <div className="absolute inset-0 pointer-events-none border-[40px] border-indigo-500/5 z-0">
+                    <div className="absolute inset-0 border border-dashed border-indigo-400/20" />
+                    {/* Vertical Margin Lines */}
+                    <div className="absolute left-[40px] top-0 bottom-0 border-l border-indigo-500/10" />
+                    <div className="absolute right-[40px] top-0 bottom-0 border-r border-indigo-500/10" />
+                    {/* Horizontal Margin Lines */}
+                    <div className="absolute top-[40px] left-0 right-0 border-t border-indigo-500/10" />
+                    <div className="absolute bottom-[40px] left-0 right-0 border-b border-indigo-500/10" />
+                    <div className="absolute top-2 left-1/2 -translate-x-1/2 text-[8px] font-black text-indigo-400 uppercase tracking-widest">Printable Safe Area (40px Margin)</div>
+                 </div>
+               )}
+
                {/* Grid Overlay */}
                <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
                     style={{ backgroundImage: 'radial-gradient(#000 1.5px, transparent 0)', backgroundSize: '30px 30px' }} 
                />
 
-               {/* Draggable Components */}
-               <Draggable bounds="parent" position={positions.name} onDrag={(e, d) => trackPos('name', e, d)}>
-                  <div 
-                    onClick={() => setActiveElement('name')}
-                    className={`absolute z-10 p-3 border-2 border-dashed ${activeElement === 'name' ? 'border-indigo-500 bg-indigo-50/20 ring-4 ring-indigo-500/10' : 'border-indigo-500/30 bg-indigo-50/5'} cursor-move transition-all group`}
-                  >
-                     <p className="font-black text-indigo-700 pointer-events-none whitespace-nowrap uppercase tracking-tighter" 
-                        style={{ 
-                          fontSize: `${positions.name.fontSize || 40}px`,
-                          textShadow: '0 2px 4px rgba(0,0,0,0.1)' 
-                        }}>
-                        { 'Sample Student Name' }
-                     </p>
-                     <div className="absolute -top-3 left-0 bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-lg shadow-lg">STUDENT NAME</div>
-                  </div>
-               </Draggable>
+               {/* Draggable Text Components */}
+               {[
+                 { id: 'name', label: 'STUDENT NAME', defaultText: 'Sample Student Name', color: 'text-indigo-700', activeColor: 'border-indigo-500' },
+                 { id: 'event', label: 'EVENT TITLE', defaultText: eventTitle, color: 'text-violet-700', activeColor: 'border-violet-500' },
+                 { id: 'date', label: 'DATE', defaultText: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }), color: 'text-emerald-700', activeColor: 'border-emerald-500' },
+                 { id: 'id', label: 'UNIQUE ID', defaultText: 'CERT-2024-XXXX-XXXX', color: 'text-amber-700', activeColor: 'border-amber-500' }
+               ].map(item => (
+                 <Draggable key={item.id} bounds="parent" position={positions[item.id] || { x: 0, y: 0 }} onDrag={(e, d) => trackPos(item.id, e, d)}>
+                    <div 
+                      onClick={() => setActiveElement(item.id)}
+                      className={`absolute z-10 p-2 border-2 border-dashed ${activeElement === item.id ? `${item.activeColor} bg-white/40 ring-4 ring-indigo-500/10` : 'border-slate-300/30 hover:border-slate-400'} cursor-move transition-all group`}
+                    >
+                       <p 
+                          className={`font-black ${item.color} pointer-events-none whitespace-nowrap`} 
+                          style={{ 
+                            fontSize: `${positions[item.id]?.fontSize || 30}px`,
+                            fontFamily: positions[item.id]?.fontFamily || 'serif',
+                            letterSpacing: `${positions[item.id]?.letterSpacing || 0}em`,
+                            lineHeight: positions[item.id]?.lineHeight || 1.2,
+                            fontWeight: positions[item.id]?.fontWeight || '700',
+                            textShadow: positions[item.id]?.shadow ? '2px 2px 4px rgba(0,0,0,0.2)' : 'none',
+                            WebkitTextStroke: positions[item.id]?.outline ? '1px rgba(0,0,0,0.2)' : 'none'
+                          }}>
+                          { item.defaultText }
+                       </p>
+                       <div className={`absolute -top-3 left-0 ${item.activeColor.replace('border', 'bg')} text-white text-[8px] font-black px-1.5 py-0.5 rounded-t-md shadow-sm`}>{item.label}</div>
+                    </div>
+                 </Draggable>
+               ))}
 
-               <Draggable bounds="parent" position={positions.event} onDrag={(e, d) => trackPos('event', e, d)}>
-                  <div 
-                    onClick={() => setActiveElement('event')}
-                    className={`absolute z-10 p-3 border-2 border-dashed ${activeElement === 'event' ? 'border-violet-500 bg-violet-50/20 ring-4 ring-violet-500/10' : 'border-violet-500/30 bg-violet-50/5'} cursor-move transition-all group`}
-                  >
-                     <p className="font-bold text-violet-700 pointer-events-none whitespace-nowrap uppercase" 
-                        style={{ 
-                          fontSize: `${positions.event.fontSize || 28}px`,
-                          textShadow: '0 2px 4px rgba(0,0,0,0.1)' 
-                        }}>
-                        {eventTitle}
-                     </p>
-                     <div className="absolute -top-3 left-0 bg-violet-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-lg shadow-lg">EVENT TITLE</div>
-                  </div>
-               </Draggable>
+               {/* Draggable Images (Logo / Signature) */}
+               {['logo', 'signature'].map(id => (
+                 <Draggable key={id} bounds="parent" position={positions[id] || { x: 0, y: 0 }} onDrag={(e, d) => trackPos(id, e, d)}>
+                    <div 
+                      onClick={() => setActiveElement(id)}
+                      className={`absolute z-10 p-1 border-2 border-dashed ${activeElement === id ? 'border-blue-500 bg-white/40' : 'border-slate-300/30'} cursor-move transition-all flex items-center justify-center`}
+                      style={{ width: positions[id]?.width || 100, height: positions[id]?.height || 60 }}
+                    >
+                       {(id === 'logo' ? logoImg : signatureImg) ? (
+                         <img 
+                           src={id === 'logo' ? logoImg : signatureImg} 
+                           alt={id} 
+                           className="max-w-full max-h-full object-contain pointer-events-none" 
+                         />
+                       ) : (
+                         <div className="flex flex-col items-center gap-1 text-slate-300">
+                           <ImageIcon className="h-5 w-5" />
+                           <p className="text-[8px] font-black uppercase">{id}</p>
+                         </div>
+                       )}
+                       <div className={`absolute -top-3 left-0 ${id === 'logo' ? 'bg-blue-600' : 'bg-rose-600'} text-white text-[8px] font-black px-1.5 py-0.5 rounded-t-md shadow-sm uppercase`}>{id}</div>
+                       
+                       {activeElement === id && (
+                         <div 
+                           onMouseDown={(e) => {
+                             e.stopPropagation()
+                             setIsResizing(true)
+                           }}
+                           className="absolute -bottom-2 -right-2 bg-white rounded-full shadow-lg p-1.5 border border-slate-100 cursor-nwse-resize hover:bg-indigo-600 hover:text-white transition-colors z-50"
+                         >
+                           <Maximize2 className="h-3 w-3" />
+                         </div>
+                       )}
+                    </div>
+                 </Draggable>
+               ))}
 
-               <Draggable bounds="parent" position={positions.date} onDrag={(e, d) => trackPos('date', e, d)}>
-                  <div 
-                    onClick={() => setActiveElement('date')}
-                    className={`absolute z-10 p-4 border-2 border-dashed ${activeElement === 'date' ? 'border-emerald-500 bg-emerald-50/20 ring-4 ring-emerald-500/10' : 'border-emerald-500/30 bg-emerald-50/5'} cursor-move transition-all group`}
-                  >
-                     <p className="font-bold text-emerald-700 pointer-events-none whitespace-nowrap"
-                        style={{ fontSize: `${positions.date.fontSize || 20}px` }}>
-                        {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}
-                     </p>
-                     <div className="absolute -top-3 left-0 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-t-lg shadow-lg">DATE</div>
-                  </div>
-               </Draggable>
+               <style jsx global>{`
+                  @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Inter:wght@400;700;900&family=Playfair+Display:wght@700;900&display=swap');
+               `}</style>
             </div>
           )}
         </main>

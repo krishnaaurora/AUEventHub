@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ensureStudentTransactionTables, getPool } from '../../_lib/pg'
 import { requireFacultyAccess } from '../_lib/auth'

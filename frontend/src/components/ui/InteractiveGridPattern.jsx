@@ -50,8 +50,8 @@ function GridCell() {
       style={{
         backgroundColor: bg,
         transition: "background-color 0.35s ease",
-        borderRight: "1px solid rgba(0,0,0,0.06)",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        borderRight: "1px solid rgba(0,0,0,0.12)",
+        borderBottom: "1px solid rgba(0,0,0,0.12)",
       }}
     />
   );

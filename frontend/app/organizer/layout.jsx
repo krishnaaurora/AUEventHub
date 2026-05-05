@@ -44,8 +44,8 @@ function getInitials(name) {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/organizer/dashboard' },
-  { icon: PlusSquare, label: 'Create Event', href: '/organizer/create-event' },
-  { icon: CalendarRange, label: 'My Events', href: '/organizer/my-events' },
+  { icon: PlusSquare, label: 'Create EVENT', href: '/organizer/create-event' },
+  { icon: CalendarRange, label: 'My EVENT', href: '/organizer/my-events' },
   { icon: Users, label: 'Registrations', href: '/organizer/registrations' },
   { icon: QrCode, label: 'QR Scanner', href: '/organizer/attendance' },
   { icon: Award, label: 'Certificates', href: '/organizer/certificates' },
@@ -56,10 +56,10 @@ const navItems = [
 ]
 
 const aiInsights = [
-  '⚡ 3 events pending approval — check "My Events" for status updates',
-  '🔥 "AI Hackathon" has 180+ registrations — trending event!',
-  '🎯 No venue clashes detected for your upcoming events',
-  '📅 2 events scheduled this week — review attendance settings',
+  '⚡ 3 EVENT pending approval — check "My EVENT" for status updates',
+  '🔥 "AI Hackathon" has 180+ registrations — trending EVENT!',
+  '🎯 No venue clashes detected for your upcoming EVENT',
+  '📅 2 EVENT scheduled this week — review attendance settings',
 ]
 
 export default function OrganizerLayout({ children }) {

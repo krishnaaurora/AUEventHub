@@ -15,25 +15,49 @@ export const authOptions = {
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
+        console.log('--- [AUTH DEBUG] Authorize Start ---')
+        console.log('Credentials:', { email: credentials?.email, passLen: credentials?.password?.length })
 
-        await ensureAuthCollections()
-        const usersCollection = await getUsersCollection()
-        const user = await usersCollection.findOne({ email: credentials.email })
+        if (!credentials?.email || !credentials?.password) {
+          console.log('--- [AUTH DEBUG] Missing credentials ---')
+          return null
+        }
 
-        if (!user || credentials.password !== user.password) return null
-        if (String(user.accountStatus || 'active').toLowerCase() === 'suspended') return null
+        try {
+          await ensureAuthCollections()
+          const usersCollection = await getUsersCollection()
+          const user = await usersCollection.findOne({ email: credentials.email })
 
-        return {
-          id: user._id.toString(),
-          email: user.email,
-          name: user.fullName,
-          role: user.role,
-          registrationId: user.registrationId,
-          clubName: user.clubName,
-          department: user.department,
-          year: user.year,
-          avatar: user.avatar,
+          if (!user) {
+            console.log('--- [AUTH DEBUG] User not found in DB ---')
+            return null
+          }
+
+          if (credentials.password !== user.password) {
+            console.log('--- [AUTH DEBUG] Password mismatch ---')
+            return null
+          }
+
+          if (String(user.accountStatus || 'active').toLowerCase() === 'suspended') {
+            console.log('--- [AUTH DEBUG] User account suspended ---')
+            return null
+          }
+
+          console.log('--- [AUTH DEBUG] Authentication Successful for:', user.email)
+          return {
+            id: user._id.toString(),
+            email: user.email,
+            name: user.fullName,
+            role: user.role,
+            registrationId: user.registrationId,
+            clubName: user.clubName,
+            department: user.department,
+            year: user.year,
+            avatar: user.avatar,
+          }
+        } catch (error) {
+          console.error('--- [AUTH DEBUG] Error in authorize ---', error)
+          return null
         }
       }
     })
@@ -70,4 +94,5 @@ export const authOptions = {
   }
 }
 
+console.log('--- [AUTH INFO] Initializing NextAuth with secret:', process.env.NEXTAUTH_SECRET ? 'CONFIGURED' : 'USING FALLBACK')
 export default NextAuth(authOptions)

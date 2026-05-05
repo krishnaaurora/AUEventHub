@@ -21,10 +21,10 @@ import {
 import getSocket from '../../../lib/socket'
 
 const statCards = [
-  { key: 'pending', label: 'Events Waiting for Verification', icon: ClipboardCheck, color: 'amber' },
-  { key: 'approved', label: 'Registrar Approved Events', icon: CheckCircle2, color: 'emerald' },
-  { key: 'rejected', label: 'Rejected Events', icon: XCircle, color: 'rose' },
-  { key: 'thisMonth', label: 'Events This Month', icon: CalendarDays, color: 'indigo' },
+  { key: 'pending', label: 'EVENT Waiting for Verification', icon: ClipboardCheck, color: 'amber' },
+  { key: 'approved', label: 'Registrar Approved EVENT', icon: CheckCircle2, color: 'emerald' },
+  { key: 'rejected', label: 'Rejected EVENT', icon: XCircle, color: 'rose' },
+  { key: 'thisMonth', label: 'EVENT This Month', icon: CalendarDays, color: 'indigo' },
 ]
 
 const colorMap = {
@@ -163,7 +163,7 @@ function RegistrarDashboard() {
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-emerald-500" />
-            Recent Events for Verification
+            Recent EVENT for Verification
           </h2>
           <Link href="/registrar/dean-approved" className="text-sm font-medium text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
             View All <ArrowRight className="h-3.5 w-3.5" />

@@ -14,7 +14,7 @@ export default function CertificateViewPage() {
   const event = searchParams.get('event_title') || 'Event Participation'
   const date = searchParams.get('event_date') || ''
   const venue = searchParams.get('event_venue') || ''
-  const org = searchParams.get('org_name') || 'AUEventHub'
+  const org = searchParams.get('org_name') || 'Aurora University Event Hub'
   const heading = searchParams.get('heading') || 'CERTIFICATE'
   const body = searchParams.get('body_text') || 'has successfully participated in and completed'
   const signatory = searchParams.get('signatory') || 'Event Organizer'
@@ -233,7 +233,7 @@ export default function CertificateViewPage() {
            This is an electronically generated certificate and does not require a physical signature.
         </p>
         <p className="text-xs text-indigo-400 mt-1 font-bold">
-            Verified by AUEventHub Blockchain Ledger
+            Verified by Aurora University Event Hub Blockchain Ledger
         </p>
       </div>
 

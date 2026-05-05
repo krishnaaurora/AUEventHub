@@ -76,7 +76,7 @@ function CertPreview({ template, student, event, onClose }) {
               className="text-xs font-bold uppercase tracking-[0.4em]"
               style={{ color: accentColor }}
             >
-              {template?.org_name || 'AUEventHub'} — Certificate of Participation
+              {template?.org_name || 'Aurora University Event Hub'} — Certificate of Participation
             </p>
 
             <h1
@@ -153,7 +153,7 @@ export default function CertificatesPage() {
   // Template state
   const [template, setTemplate] = useState({
     image_url: '',
-    org_name: 'AUEventHub',
+    org_name: 'Aurora University Event Hub',
     heading: 'CERTIFICATE',
     body_text: 'has successfully participated in and completed',
     signatory: 'Event Organizer',
@@ -413,7 +413,7 @@ export default function CertificatesPage() {
 
                     {/* Text fields */}
                     {[
-                      { label: 'Org Name', key: 'org_name', placeholder: 'AUEventHub' },
+                      { label: 'Org Name', key: 'org_name', placeholder: 'Aurora University Event Hub' },
                       { label: 'Heading', key: 'heading', placeholder: 'CERTIFICATE' },
                       { label: 'Body Text', key: 'body_text', placeholder: 'has participated in...' },
                       { label: 'Signatory', key: 'signatory', placeholder: 'Event Organizer' },

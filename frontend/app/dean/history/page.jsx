@@ -3,7 +3,6 @@
 import { useEffect, useState, memo, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
 import {
   History,
   Eye,
@@ -28,13 +27,8 @@ const EventRowSkeleton = () => (
   </tr>
 )
 
-const EventRow = memo(({ event, i, getStatusBadge }) => (
-  <motion.tr
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ delay: i * 0.02 }}
-    className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors"
-  >
+const EventRow = memo(({ event, getStatusBadge }) => (
+  <tr className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
     <td className="px-5 py-3.5 font-medium text-slate-800 max-w-[200px] truncate">{event.title}</td>
     <td className="px-5 py-3.5 text-slate-600">{event.organizer || '—'}</td>
     <td className="px-5 py-3.5 text-slate-600 hidden md:table-cell">{event.department || '—'}</td>
@@ -57,7 +51,7 @@ const EventRow = memo(({ event, i, getStatusBadge }) => (
         </button>
       </Link>
     </td>
-  </motion.tr>
+  </tr>
 ))
 
 EventRow.displayName = 'EventRow'
@@ -215,8 +209,8 @@ export default function EventHistoryPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((event, i) => (
-                  <EventRow key={event._id} event={event} i={i} getStatusBadge={getStatusBadge} />
+                filtered.map((event) => (
+                  <EventRow key={event._id} event={event} getStatusBadge={getStatusBadge} />
                 ))
               )}
             </tbody>

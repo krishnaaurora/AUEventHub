@@ -209,8 +209,8 @@ function VCRegistrarApprovedPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dean Approved Events</h1>
-          <p className="text-sm text-slate-500 mt-1">Events that have been approved by the Dean</p>
+          <h1 className="text-2xl font-bold text-slate-900">Dean Approved EVENT</h1>
+          <p className="text-sm text-slate-500 mt-1">EVENT that have been approved by the Dean</p>
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />

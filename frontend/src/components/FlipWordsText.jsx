@@ -96,7 +96,7 @@ export default function FlipWordsText({
     <div className={`flex flex-col items-center justify-center text-center ${className}`}>
       <div className="relative inline-block my-2 min-w-[18rem]">
         <div className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-slate-800 py-2 px-6 inline-flex items-center justify-center uppercase relative w-full">
-          <span className="mr-2">Events Made</span>
+          <span className="mr-2">EVENT Made</span>
           <FlipWords words={words} duration={duration} />
         </div>
 

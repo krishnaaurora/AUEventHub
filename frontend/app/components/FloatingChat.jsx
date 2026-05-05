@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, MessageCircle, X, Sparkles, User, Bot } from "lucide-react";
 // ✅ AI calls go to Flask via service layer — not Next.js /api/chat
-import { chatWithRiya } from "@/services/ai.service";
+import { chatWithTiya } from "@/services/ai.service";
 
 const Q_A_MAP = {
     "What is Aurora Hub?": "Aurora Hub is a university event management platform that helps students, organizers, and administration manage campus events efficiently. It allows organizers to create events, administrators to approve them, and students to discover and register for events easily.",
@@ -14,7 +14,9 @@ const Q_A_MAP = {
     "What is the Event Discovery feature?": "The Event Discovery feature allows students to browse featured, ongoing, and upcoming events on the dashboard. It helps users quickly find events happening across the campus and view their details.",
     "What is the Approval Workflow feature?": "The Approval Workflow ensures that every event goes through an administrative review process. First, the Dean reviews the event request, and then the Vice Chancellor gives final approval before the event is published.",
     "What is the Student Registration feature?": "The Student Registration feature allows students to register for events directly from the dashboard. Their profile details are automatically used to simplify the registration process.",
-    "What is the AI Assistance feature?": "The AI Assistance feature helps organizers generate event descriptions and formal approval request letters automatically. It saves time and helps create professional event documentation.",
+    "What is the AI Assistance feature?": "The AI Assistance feature helps organizers generate event descriptions, formal approval request letters, and detailed event reports automatically. It saves time and helps create professional event documentation.",
+    "Tell me about Documentation Hub": "The Documentation Hub is an MS Word-like editor designed for organizers to create professional event reports. It integrates AI generation and real-time event data for automated reporting.",
+    "How to generate a report?": "You can use the Documentation Hub to generate reports. TIYA can help you fetch metrics or draft sections like Executive Summaries and Outcome Analysis.",
     "What is the Notify Me feature?": "The Notify Me feature allows students to subscribe to upcoming events and receive updates or reminders so they do not miss important activities.",
     "What are the future enhancements?": "We have exciting future enhancements planned: 🚀 Advanced Analytics Dashboard - Enhanced event insights and attendee analytics. 📱 Mobile App - Native iOS and Android applications for easy event access. 🤖 AI-Powered Recommendations - Personalized event suggestions based on user preferences. 📍 Location-based Services - Find events near you using geolocation. 🎯 Virtual Event Support - Integrate streaming and hybrid event capabilities. 💬 Advanced Chat Features - Real-time event notifications and interactive Q&A. 📊 Report Generation - Automated event reports for organizers and administrators.",
     "Tell me about future features": "We have exciting future enhancements planned: 🚀 Advanced Analytics Dashboard - Enhanced event insights and attendee analytics. 📱 Mobile App - Native iOS and Android applications for easy event access. 🤖 AI-Powered Recommendations - Personalized event suggestions based on user preferences. 📍 Location-based Services - Find events near you using geolocation. 🎯 Virtual Event Support - Integrate streaming and hybrid event capabilities. 💬 Advanced Chat Features - Real-time event notifications and interactive Q&A. 📊 Report Generation - Automated event reports for organizers and administrators.",
@@ -22,7 +24,7 @@ const Q_A_MAP = {
 
 const INITIAL_SUGGESTIONS = [
     "What is Aurora Hub?",
-    "What are the main features of this website?",
+    "How to generate a report?",
     "What are the future enhancements?"
 ];
 
@@ -78,7 +80,7 @@ export default function FloatingChat({ isEmbedded = false }) {
             setMessages([{
                 id: "welcome",
                 author: "ai",
-                text: "Hello! 👋 I'm RIYA, your AUEventHub assistant. How can I help you today?",
+                text: "Hello! 👋 I'm TIYA, your Aurora University Event Hub assistant. How can I help you today?",
                 avatar: "AI"
             }]);
         }
@@ -118,14 +120,14 @@ export default function FloatingChat({ isEmbedded = false }) {
             if (exactMatch) {
                 reply = Q_A_MAP[exactMatch];
             } else {
-                const allowedTopics = ["event", "register", "attendance", "certificate", "feature", "help", "dean", "vc", "publish", "login", "profile", "organizer", "faculty", "student", "about", "website", "platform", "hub", "portal", "riya", "what", "how", "this", "all"];
+                const allowedTopics = ["event", "register", "attendance", "certificate", "feature", "help", "dean", "vc", "publish", "login", "profile", "organizer", "faculty", "student", "about", "website", "platform", "hub", "portal", "tiya", "what", "how", "this", "all", "documentation", "report", "summary"];
                 const isAllowed = allowedTopics.some(word => tempStr.includes(word));
 
                 if (!isAllowed) {
-                    reply = "I can only answer questions related to the AUEventHub platform.";
+                    reply = "I can only answer questions related to the Aurora University Event Hub platform.";
                 } else {
                     // ✅ Calls Flask /api/ai/chat via service layer
-                    const data = await chatWithRiya(text);
+                    const data = await chatWithTiya(text);
                     reply = data.reply || "I'm having trouble processing that right now.";
                 }
             }
@@ -213,7 +215,7 @@ export default function FloatingChat({ isEmbedded = false }) {
                     {isTyping && <TypingIndicator />}
                     <div ref={messagesEndRef} />
                 </div>
-                <InputBar onSend={handleSendMessage} placeholder="Ask RIYA anything..." />
+                <InputBar onSend={handleSendMessage} placeholder="Ask TIYA anything..." />
             </div>
         );
     }
@@ -252,10 +254,10 @@ export default function FloatingChat({ isEmbedded = false }) {
                         {/* Header */}
                         <div className="p-6 bg-gradient-to-r from-indigo-600 to-violet-700 text-white flex flex-col gap-1 relative overflow-hidden">
                             <h3 className="text-xl font-bold flex items-center gap-2">
-                                Ask RIYA <Sparkles className="h-5 w-5 text-indigo-200" />
+                                Ask TIYA <Sparkles className="h-5 w-5 text-indigo-200" />
                             </h3>
                             <p className="text-xs text-indigo-100 opacity-80">
-                                Your smart AI assistant for AUEventHub
+                                Your smart AI assistant for Aurora University Event Hub
                             </p>
                             <div className="absolute top-[-20%] right-[-10%] w-32 h-32 bg-indigo-500 rounded-full blur-3xl opacity-50" />
                         </div>

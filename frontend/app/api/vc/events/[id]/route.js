@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import {
@@ -15,8 +16,14 @@ export async function GET(request, { params }) {
     const auth = await requireVCAccess()
     if (auth.response) return auth.response
 
-    const { id } = params
+    await ensureStudentEventCollections()
+    const eventsCollection = await getEventsCollection()
+    const approvalsCollection = await getEventApprovalsCollection()
+    const detailsCollection = await getEventDetailsCollection()
+    const aiDataCollection = await getEventAiDataCollection()
+    const trendingCollection = await getEventTrendingCollection()
 
+    const { id } = params
     const eventObjectId = (() => { try { return new ObjectId(id) } catch { return null } })()
 
     // 1. Get Approval matching VC purview

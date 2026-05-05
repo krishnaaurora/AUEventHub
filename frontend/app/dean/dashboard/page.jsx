@@ -23,8 +23,8 @@ import getSocket from '../../../lib/socket'
 
 const statCards = [
   { key: 'pending', label: 'Pending Event Requests', icon: ClipboardCheck, color: 'amber' },
-  { key: 'approved', label: 'Approved Events', icon: CheckCircle2, color: 'emerald' },
-  { key: 'rejected', label: 'Rejected Events', icon: XCircle, color: 'rose' },
+  { key: 'approved', label: 'Approved EVENT', icon: CheckCircle2, color: 'emerald' },
+  { key: 'rejected', label: 'Rejected EVENT', icon: XCircle, color: 'rose' },
   { key: 'thisMonth', label: 'Submitted This Month', icon: CalendarDays, color: 'indigo' },
 ]
 
