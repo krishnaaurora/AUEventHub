@@ -27,7 +27,7 @@ async function getDashboardData(studentId) {
 
     // Fetch all required data in parallel directly from DB
     const [events, regs, trending, recos, certs, notifies] = await Promise.all([
-      eventsColl.find({ status: 'approved' }).sort({ created_at: -1 }).limit(100).toArray(),
+      eventsColl.find({ status: 'published' }).sort({ created_at: -1 }).limit(100).toArray(),
       db.collection('registrations').find({ student_id: studentId }).toArray(),
       db.collection(COLLECTIONS.eventTrending).find({}).sort({ score: -1 }).limit(6).toArray(),
       recosColl.findOne({ student_id: studentId }),

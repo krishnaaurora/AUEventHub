@@ -29,12 +29,17 @@ export const authOptions = {
           const user = await usersCollection.findOne({ email: credentials.email })
 
           if (!user) {
-            console.log('--- [AUTH DEBUG] User not found in DB ---')
+            console.log('--- [AUTH DEBUG] User not found in DB for email:', credentials.email)
+            const allUsers = await usersCollection.find({}, { projection: { email: 1 } }).toArray()
+            console.log('--- [AUTH DEBUG] Existing users in DB:', allUsers.map(u => u.email))
             return null
           }
 
+          console.log('--- [AUTH DEBUG] User found:', { email: user.email, role: user.role })
+          console.log('--- [AUTH DEBUG] Password check:', { match: credentials.password === user.password })
+
           if (credentials.password !== user.password) {
-            console.log('--- [AUTH DEBUG] Password mismatch ---')
+            console.log('--- [AUTH DEBUG] Password mismatch. Input:', credentials.password, 'Expected:', user.password)
             return null
           }
 

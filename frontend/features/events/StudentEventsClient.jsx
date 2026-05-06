@@ -63,6 +63,12 @@ export default function StudentEventsClient({
   const [notice, setNotice] = useState('')
   const [error, setError] = useState('')
 
+  // Debugging log to ensure studentId is present
+  useEffect(() => {
+    console.log('--- [STUDENT DEBUG] Current Student ID:', studentId)
+    if (!studentId) setError('Warning: No Student ID found. Registration may fail.')
+  }, [studentId])
+
   // Synchronization with socket.io
   useEffect(() => {
     const socket = getSocket()
@@ -111,9 +117,17 @@ export default function StudentEventsClient({
   }, [events, query, selectedCategory, recommendationIds, liveEventIds])
 
   const handleRegister = useCallback(async (event) => {
-     if (!studentId) return setError('No session found')
-     const eventId = String(event._id)
+     setError('')
+     setNotice('')
+     if (!studentId) {
+       setError('No session found. Please try logging out and in again.')
+       return
+     }
+     
+     const eventId = String(event._id || event.id)
+     console.log('--- [STUDENT DEBUG] Registering for event:', eventId)
      setRegisteringEventId(eventId)
+
      try {
         const res = await fetch('/api/student/registrations', {
             method: 'POST',
@@ -121,10 +135,21 @@ export default function StudentEventsClient({
             body: JSON.stringify({ student_id: studentId, event_id: eventId })
         })
         const data = await res.json()
-        if (res.ok) setNotice(data.message)
-        else setError(data.message)
-     } catch { setError('Connection error') }
-     finally { setRegisteringEventId(null) }
+        if (res.ok) {
+          setNotice(data.message || 'Successfully registered!')
+          // Optimistically update local state if approved
+          if (data.registration?.status === 'approved') {
+            setRegisteredEventIds(prev => [...prev, eventId])
+          }
+        } else {
+          setError(data.message || 'Registration failed.')
+        }
+     } catch (err) { 
+        console.error('Registration Error:', err)
+        setError('Connection error. Please check your internet.') 
+     } finally { 
+        setRegisteringEventId(null) 
+     }
   }, [studentId])
 
   return (

@@ -4,6 +4,8 @@ import { getEventsCollection, getDb } from '../../_lib/db'
 import { ensureStudentTransactionTables, getPool } from '../../_lib/pg'
 import { emitSocketEvent } from '../../../../server/socket'
 import { ObjectId } from 'mongodb'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/pages/api/auth/[...nextauth]'
 
 function buildTicketId(studentId, eventId) {
   const studentPart = String(studentId).replace(/[^A-Za-z0-9]/g, '').slice(-6).toUpperCase() || 'STUDENT'
@@ -118,22 +120,28 @@ export async function POST(request) {
   try {
     await ensureStudentTransactionTables()
     const pool = getPool()
+    
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized. Please log in.' }, { status: 401 })
+    }
+
     const body = await request.json()
-
-
     const studentId = String(body.student_id || '').trim()
     let eventId = String(body.event_id || '').trim()
+
+    // Determine status based on email domain
+    const email = session.user.email || ''
+    const isInternal = email.toLowerCase().endsWith('@aurora.edu.in')
+    const registrationStatus = isInternal ? 'approved' : 'pending'
 
     // Convert eventId to ObjectId if possible
     let eventObjectId = eventId
     try {
-      const { ObjectId } = (await import('mongodb'))
       if (ObjectId.isValid(eventId)) {
         eventObjectId = new ObjectId(eventId)
       }
-    } catch (e) {
-      // fallback: use as string
-    }
+    } catch (e) {}
 
     if (!studentId || !eventId) {
       return NextResponse.json(
@@ -178,18 +186,24 @@ export async function POST(request) {
       const ticketId = buildTicketId(studentId, canonicalEventId)
       const qrPayload = buildQrPayload(ticketId, studentId, canonicalEventId)
       const now = new Date().toISOString()
+      
       const registrationResult = await client.query(
         `INSERT INTO registrations (student_id, event_id, ticket_id, qr_code, registration_date, registered_at, status)
          VALUES ($1, $2, $3, $4, $5, $5, $6)
          RETURNING id, student_id, event_id, ticket_id, qr_code, registered_at, registration_date, status`,
-        [studentId, canonicalEventId, ticketId, qrPayload, now, 'confirmed'],
+        [studentId, canonicalEventId, ticketId, qrPayload, now, registrationStatus],
       )
+
+      const displayStatus = registrationStatus === 'approved' ? 'Confirmed' : 'Pending'
+      const notificationMessage = registrationStatus === 'approved' 
+        ? `Registration confirmed for ${event.title}. Ticket ${ticketId} is ready.`
+        : `Registration request sent for ${event.title}. Awaiting organizer approval.`
 
       const notificationResult = await client.query(
         `INSERT INTO notifications (user_id, type, title, message, priority, is_read, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, user_id, message, priority, created_at`,
-        [studentId, 'info', 'Registration Confirmed', `Registration confirmed for ${event.title}. Ticket ${ticketId} is ready.`, 'medium', false, now],
+        [studentId, registrationStatus === 'approved' ? 'info' : 'warning', `Registration ${displayStatus}`, notificationMessage, 'medium', false, now],
       )
 
       await client.query('COMMIT')
@@ -200,11 +214,13 @@ export async function POST(request) {
       // ✅ Update MongoDB Mirror (non-critical)
       try {
         const db = await getDb()
-        // 1. Update event count
-        await db.collection('events').updateOne(
-          { _id: event._id },
-          { $inc: { registered_count: 1 }, $set: { updatedAt: new Date() } }
-        )
+        // 1. Only increment count if approved
+        if (registrationStatus === 'approved') {
+          await db.collection('events').updateOne(
+            { _id: event._id },
+            { $inc: { registered_count: 1 }, $set: { updatedAt: new Date() } }
+          )
+        }
 
         // 2. Create registration record in MongoDB for visibility
         await db.collection('registrations').updateOne(
@@ -253,7 +269,11 @@ export async function POST(request) {
       emitSocketEvent('dashboard:refresh', { scope: 'student' }, 'role:student')
       emitSocketEvent('dashboard:refresh', { scope: 'organizer' }, 'role:organizer')
 
-      return NextResponse.json({ registration: payload, notification }, { status: 201 })
+      const successMsg = registrationStatus === 'approved' 
+        ? 'Successfully registered!' 
+        : 'Registration request sent. Pending organizer approval.'
+
+      return NextResponse.json({ message: successMsg, registration: payload, notification }, { status: 201 })
     } catch (err) {
       await client.query('ROLLBACK')
       console.error('[REGISTRATION] Transaction Failed:', err.message)

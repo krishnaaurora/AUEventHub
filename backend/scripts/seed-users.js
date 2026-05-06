@@ -1,8 +1,8 @@
 import 'dotenv/config'
 import { MongoClient } from 'mongodb'
 
-const uri = 'mongodb+srv://jaikrishna_7_mongo:Jai2005.7.@cluster0.zngygka.mongodb.net/'
-const dbName = 'AUeventhub_db'
+const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017'
+const dbName = 'ai_eventmang'
 
 async function seedUsers() {
   const client = new MongoClient(uri)

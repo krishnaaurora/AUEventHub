@@ -4,41 +4,51 @@ import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import StudentEventsClient from '@/features/events/StudentEventsClient'
 import { headers } from 'next/headers'
 
-// ✅ Server Component - FETCHER (Fastest Win)
+import { 
+  getEventsCollection, 
+  getAiRecommendationsCollection, 
+  getDb, 
+  COLLECTIONS 
+} from '@/app/api/_lib/db'
 
 async function getEventsData(studentId) {
-  const host = headers().get('host')
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https'
-  const baseUrl = `${protocol}://${host}`
-
   try {
-    const urls = [
-      `${baseUrl}/api/student/events?status=published&limit=100`,
-      `${baseUrl}/api/student/ai-recommendations?student_id=${encodeURIComponent(studentId)}`,
-      studentId 
-        ? `${baseUrl}/api/student/registrations?student_id=${encodeURIComponent(studentId)}`
-        : null
-    ].filter(Boolean)
+    const db = await getDb()
+    const [eventsColl, recosColl] = await Promise.all([
+      getEventsCollection(),
+      getAiRecommendationsCollection()
+    ])
 
-    const [eventsJson, recosJson, regsJson] = await Promise.all(
-      urls.map(url => fetch(url, { cache: 'no-store' }).then(r => r.json()))
-    )
+    // Fetch published events and student specific data in parallel
+    const [events, recos, regs] = await Promise.all([
+      eventsColl.find({ status: 'published' }).sort({ start_date: 1, start_time: 1 }).limit(100).toArray(),
+      recosColl.findOne({ student_id: studentId }),
+      db.collection('registrations').find({ student_id: studentId }).toArray()
+    ])
 
     return {
-      events: eventsJson?.items || [],
-      recommendations: recosJson?.recommended_events || [],
-      registrations: (regsJson?.items || []).map(r => String(r.event_id))
+      events: events.map(e => ({ ...e, _id: String(e._id) })),
+      recommendations: recos?.recommended_events || [],
+      registrations: regs.map(r => String(r.event_id))
     }
   } catch (error) {
-    console.error('Failed to load events data:', error)
+    console.error('Failed to load browse events data (Direct DB):', error)
     return { events: [], recommendations: [], registrations: [] }
   }
 }
 
 export default async function BrowseEventsPage({ searchParams }) {
   const session = await getServerSession(authOptions)
-  const studentId = session?.user?.registrationId || session?.user?.id || ''
   
+  if (!session) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p className="text-slate-500">Redirecting to login...</p>
+      </div>
+    )
+  }
+
+  const studentId = session.user.registrationId || session.user.id
   const initialData = await getEventsData(studentId)
 
   return (
