@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/pages/api/auth/[...nextauth]'
 import StudentEventsClient from '@/features/events/StudentEventsClient'

@@ -6,9 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "custom-dev": "node server.local.js",
-    "custom-start": "node server.local.js"
+    "start": "next start"
   },
   "dependencies": {
     "@heroui/react": "^2.8.9",
