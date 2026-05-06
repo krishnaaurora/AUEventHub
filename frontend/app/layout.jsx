@@ -1,5 +1,6 @@
 import Providers from './providers'
 import SplitDashboardDecorator from './components/layout/SplitDashboardDecorator'
+import PageTransition from './components/layout/PageTransition'
 import '../src/index.css'
 import 'lenis/dist/lenis.css'
 
@@ -14,7 +15,9 @@ export default function RootLayout({ children }) {
       <body>
         <Providers>
           <SplitDashboardDecorator>
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </SplitDashboardDecorator>
         </Providers>
       </body>

@@ -9,7 +9,23 @@ import {
   Users,
   Sparkles,
 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import MyEventsTable from '../components/MyEventsTable'
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+}
+
+const item = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0 }
+}
 
 const statCards = [
   { key: 'total', label: 'Total EVENT', icon: CalendarDays, color: 'indigo' },
@@ -30,7 +46,9 @@ const StatCard = memo(function StatCard({ card, value }) {
   const c = colorMap[card.color]
   const Icon = card.icon
   return (
-    <div
+    <motion.div
+      variants={item}
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
       className={`rounded-2xl border border-slate-200 ${c.bg} p-5 shadow-sm hover:shadow-md transition-all`}
     >
       <div className={`h-9 w-9 rounded-xl ${c.icon} flex items-center justify-center mb-3`}>
@@ -38,7 +56,7 @@ const StatCard = memo(function StatCard({ card, value }) {
       </div>
       <p className="text-2xl font-bold text-slate-900">{value}</p>
       <p className="text-xs text-slate-500 mt-1">{card.label}</p>
-    </div>
+    </motion.div>
   )
 })
 
@@ -53,11 +71,16 @@ export default function OrganizerDashboardClient({
     <div className="space-y-6">
 
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-4">
+      <motion.div 
+        variants={container}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-4"
+      >
         {statCards.map((card) => (
           <StatCard key={card.key} card={card} value={stats[card.key]} />
         ))}
-      </div>
+      </motion.div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <MyEventsTable 
