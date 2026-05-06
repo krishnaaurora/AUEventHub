@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ensureStudentEventCollections, getNotificationsCollection } from '../../_lib/db'
 import { requireAdminAccess } from '../_lib/auth'
