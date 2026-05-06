@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getEventsCollection, getEventApprovalsCollection, ensureStudentEventCollections } from '../../_lib/db'
 import { getPool, ensureStudentTransactionTables } from '../../_lib/pg'

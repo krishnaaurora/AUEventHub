@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { requireRegistrarAccess } from '../_lib/auth'
 import {

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ensureStudentEventCollections, getFeedbackCollection } from '../../_lib/db'
 

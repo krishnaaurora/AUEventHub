@@ -172,8 +172,11 @@ function VCLayout({ children }) {
               <Menu className="h-6 w-6" />
             </button>
 
-            <div className="flex-1 flex items-center">
-              <p className="text-sm font-semibold text-slate-700 ml-2 hidden sm:block">Vice Chancellor Portal</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Vice Chancellor Portal</p>
+              <h2 className="text-lg font-bold text-slate-900 truncate">
+                Welcome back{session?.user?.name ? `, ${session.user.name.split(' ')[0]}` : ''}
+              </h2>
             </div>
 
             {/* Right side */}

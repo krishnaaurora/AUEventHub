@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { pingPostgres } from '../_lib/pg'
 import { pingMongo } from '../_lib/db'
 

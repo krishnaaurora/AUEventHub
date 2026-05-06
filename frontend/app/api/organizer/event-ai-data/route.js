@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ensureOrganizerEventCollections, getEventAiDataCollection } from '../../_lib/db'
 
@@ -6,14 +7,21 @@ function toPositiveInt(value, fallback) {
   return Number.isFinite(num) && num > 0 ? num : fallback
 }
 
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/pages/api/auth/[...nextauth]'
+
 export async function GET(request) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
     await ensureOrganizerEventCollections()
     const collection = await getEventAiDataCollection()
     const { searchParams } = new URL(request.url)
 
     const eventId = String(searchParams.get('event_id') || '').trim()
-    const organizerId = String(searchParams.get('organizer_id') || '').trim()
     const eventIds = String(searchParams.get('event_ids') || '')
       .split(',')
       .map((item) => item.trim())
@@ -26,8 +34,13 @@ export async function GET(request) {
     } else if (eventIds.length > 0) {
       query.event_id = { $in: eventIds }
     }
-    if (organizerId) {
-      query.organizer_id = organizerId
+
+    // Role-based privacy
+    if (session.user.role === 'organizer') {
+      const organizerId = session.user.registrationId || session.user.id
+      query.organizer_id = String(organizerId)
+    } else if (searchParams.get('organizer_id')) {
+      query.organizer_id = String(searchParams.get('organizer_id'))
     }
 
     const items = await collection.find(query).sort({ updatedAt: -1 }).limit(limit).toArray()
@@ -42,13 +55,18 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== 'organizer' && session.user.role !== 'admin')) {
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    }
+
     await ensureOrganizerEventCollections()
     const collection = await getEventAiDataCollection()
     const body = await request.json()
 
     const eventId = String(body.event_id || '').trim()
-    const organizerId = String(body.organizer_id || '').trim()
-    const organizer = String(body.organizer || '').trim()
+    const organizerId = session.user.registrationId || session.user.id
+    const organizerName = session.user.name || session.user.email
 
     if (!eventId) {
       return NextResponse.json({ message: 'event_id is required.' }, { status: 400 })
@@ -56,8 +74,8 @@ export async function POST(request) {
 
     const item = {
       event_id: eventId,
-      ...(organizerId ? { organizer_id: organizerId } : {}),
-      ...(organizer ? { organizer } : {}),
+      organizer_id: String(organizerId),
+      organizer: organizerName,
       ...(body.inputs ? { inputs: body.inputs } : {}),
       ...(body.generated_description ? { generated_description: String(body.generated_description) } : {}),
       ...(body.description_source ? { description_source: String(body.description_source) } : {}),

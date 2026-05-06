@@ -1,27 +1,31 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ensureStudentTransactionTables, getPool } from '../../_lib/pg'
 import { emitSocketEvent } from '../../../../server/socket'
 
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/pages/api/auth/[...nextauth]'
+
 export async function GET(request) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
     await ensureStudentTransactionTables()
     const pool = getPool()
-    const { searchParams } = new URL(request.url)
-    const userId = String(searchParams.get('user_id') || '').trim()
+    
+    // Force current user ID
+    const userId = session.user.registrationId || session.user.id
 
-    const result = userId
-      ? await pool.query(
-          `SELECT id, user_id, message, priority, created_at, is_read
-           FROM notifications
-           WHERE user_id = $1
-           ORDER BY created_at DESC`,
-          [userId],
-        )
-      : await pool.query(
-          `SELECT id, user_id, message, priority, created_at, is_read
-           FROM notifications
-           ORDER BY created_at DESC`,
-        )
+    const result = await pool.query(
+      `SELECT id, user_id, message, priority, created_at, is_read 
+       FROM notifications 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC`,
+      [String(userId)],
+    )
 
     return NextResponse.json({ items: result.rows })
   } catch (error) {

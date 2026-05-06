@@ -223,19 +223,11 @@ export default function DeanLayout({ children }) {
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="flex-1 bg-gradient-to-r from-emerald-50/80 via-white to-teal-50/80 rounded-xl px-3 py-1.5 overflow-hidden border border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                  <Zap className="h-3 w-3 text-emerald-500" /> AI Insights
-                </span>
-                <div className="relative flex-1 overflow-hidden">
-                  <div className="flex animate-marquee whitespace-nowrap gap-16">
-                    {[...aiInsights, ...aiInsights].map((text, i) => (
-                      <span key={i} className="text-xs font-medium text-slate-600">{text}</span>
-                    ))}
-                  </div>
-                </div>
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Dean Portal</p>
+              <h2 className="text-lg font-bold text-slate-900 truncate">
+                Welcome back{profileName ? `, ${profileName.split(' ')[0]}` : ''}
+              </h2>
             </div>
 
             <div className="flex items-center gap-3 ml-auto">

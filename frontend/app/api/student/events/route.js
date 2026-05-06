@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic'
 import { ensureStudentEventCollections, getEventsCollection } from '../../_lib/db'
 import { emitSocketEvent } from '../../../../server/socket'
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/pages/api/auth/[...nextauth]'
 
 function toPositiveInt(value, fallback) {
   const num = Number.parseInt(value, 10)
@@ -19,26 +22,34 @@ export async function GET(request) {
     await ensureStudentEventCollections()
     const eventsCollection = await getEventsCollection()
 
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
     const { searchParams } = new URL(request.url)
     const q = String(searchParams.get('q') || '').trim()
     const category = String(searchParams.get('category') || '').trim()
     const status = String(searchParams.get('status') || '').trim()
-    const organizerId = String(searchParams.get('organizer_id') || '').trim()
-    const organizer = String(searchParams.get('organizer') || '').trim()
     const page = toPositiveInt(searchParams.get('page'), 1)
     const limit = toPositiveInt(searchParams.get('limit'), 20)
 
     const query = {}
-    if (category) {
-      query.category = category
-    }
-    if (status) {
-      query.status = status
-    }
-    if (organizerId) {
-      query.organizer_id = organizerId
-    } else if (organizer) {
-      query.organizer = organizer
+    if (category) query.category = category
+    if (status) query.status = status
+
+    // Role-based filtering
+    if (session.user.role === 'organizer') {
+      const organizerId = session.user.registrationId || session.user.id
+      query.organizer_id = String(organizerId)
+    } else {
+      const organizerIdParam = String(searchParams.get('organizer_id') || '').trim()
+      const organizerParam = String(searchParams.get('organizer') || '').trim()
+      if (organizerIdParam) {
+        query.organizer_id = organizerIdParam
+      } else if (organizerParam) {
+        query.organizer = organizerParam
+      }
     }
     if (q) {
       query.$or = [
@@ -87,6 +98,11 @@ export async function POST(request) {
     await ensureStudentEventCollections()
     const eventsCollection = await getEventsCollection()
 
+    const session = await getServerSession(authOptions)
+    if (!session || (session.user.role !== 'organizer' && session.user.role !== 'admin')) {
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 })
+    }
+
     const body = await request.json()
     const title = String(body.title || '').trim()
     const category = String(body.category || '').trim()
@@ -95,19 +111,22 @@ export async function POST(request) {
     const endDate = String(body.end_date || body.date || '').trim()
     const startTime = String(body.start_time || body.time || '').trim()
     const endTime = String(body.end_time || body.time || '').trim()
-    const organizer = String(body.organizer || '').trim()
-    const organizerId = String(body.organizer_id || '').trim()
+    
+    // Force organizer details from session
+    const organizerId = session.user.registrationId || session.user.id
+    const organizerName = session.user.name || session.user.email
+
     const description = String(body.description || '').trim()
     const seats = Number(body.seats || body.max_participants)
     const registeredCount = Number(body.registered_count || 0)
-    const status = String(body.status || 'approved').trim().toLowerCase()
+    const status = session.user.role === 'admin' ? String(body.status || 'approved').toLowerCase() : 'pending_dean'
     const department = String(body.department || '').trim()
     const guestSpeakers = String(body.guest_speakers || '').trim()
     const instructions = String(body.instructions || '').trim()
     const poster = String(body.poster || '').trim()
     const maxParticipants = Number(body.max_participants || body.seats || 0)
 
-    if (!title || !category || !venue || !startDate || !startTime || !organizer || !description) {
+    if (!title || !category || !venue || !startDate || !startTime || !organizerName || !description) {
       return NextResponse.json({ message: 'Missing required event fields.' }, { status: 400 })
     }
 
@@ -166,8 +185,8 @@ export async function POST(request) {
       end_time: endTime || startTime,
       date: startDate,
       time: startTime,
-      organizer,
-      ...(organizerId ? { organizer_id: organizerId } : {}),
+      organizer: organizerName,
+      organizer_id: String(organizerId),
       description,
       seats,
       max_participants: maxParticipants || seats,
@@ -216,6 +235,11 @@ export async function PUT(request) {
     await ensureStudentEventCollections()
     const eventsCollection = await getEventsCollection()
 
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const id = body.id || body._id
     if (!id) {
@@ -227,6 +251,12 @@ export async function PUT(request) {
       filter = { _id: new ObjectId(id) }
     } catch {
       filter = { _id: id }
+    }
+
+    // Role-based Update Restriction
+    if (session.user.role === 'organizer') {
+      const organizerId = session.user.registrationId || session.user.id
+      filter.organizer_id = String(organizerId)
     }
 
     // Capture fields to update

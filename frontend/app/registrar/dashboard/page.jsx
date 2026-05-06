@@ -132,13 +132,7 @@ function RegistrarDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Registrar Portal</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">
-          Welcome back{registrarName ? `, ${registrarName.split(' ')[0]}` : ''}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">Verify event logistics and ensure scheduling compliance.</p>
-      </div>
+
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((card) => {

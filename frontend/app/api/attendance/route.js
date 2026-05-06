@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getPool, ensureStudentTransactionTables } from '../_lib/pg'
 import crypto from 'crypto'

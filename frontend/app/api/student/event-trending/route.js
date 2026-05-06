@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { ensureStudentEventCollections, getEventTrendingCollection } from '../../_lib/db'
 import { emitSocketEvent } from '../../../../server/socket'

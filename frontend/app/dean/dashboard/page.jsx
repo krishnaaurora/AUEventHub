@@ -134,13 +134,7 @@ function DeanDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">Dean Portal</p>
-        <h1 className="mt-1 text-2xl font-bold text-slate-900">
-          Welcome back{deanName ? `, ${deanName.split(' ')[0]}` : ''}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">Review event proposals and manage approvals.</p>
-      </div>
+
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statCards.map((card) => {

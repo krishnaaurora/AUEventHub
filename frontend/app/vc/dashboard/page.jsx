@@ -109,10 +109,7 @@ function VCDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-900">VC Dashboard</h1>
-        <p className="text-sm text-slate-500 mt-1">Final approval and oversight of university events</p>
-      </header>
+
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
